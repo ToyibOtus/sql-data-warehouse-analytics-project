@@ -101,7 +101,7 @@ BEGIN
 		-- Rollback transaction on error
 		IF @@TRANCOUNT > 0 ROLLBACK TRAN;
 
-		-- Set rows loaded to 0 when NUL
+		-- Set rows loaded to 0 when NULL
 		IF @rows_loaded IS NULL SET @rows_loaded = 0;
 
 		-- Update log table on failure
