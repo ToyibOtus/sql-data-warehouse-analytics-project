@@ -100,7 +100,7 @@ BEGIN
 		SET @step_status = 'FAILED';
 
 		-- Rollback transaction on error
-		IF  @@TRANCOUNT > 0 ROLLBACK TRAN;
+		IF @@TRANCOUNT > 0 ROLLBACK TRAN;
 
 		-- Set rows loaded to 0 when NULL
 		IF @rows_loaded IS NULL SET @rows_loaded = 0;
