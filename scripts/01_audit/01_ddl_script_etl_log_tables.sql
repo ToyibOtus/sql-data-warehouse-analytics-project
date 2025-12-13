@@ -46,7 +46,7 @@ CREATE TABLE [audit].etl_step_run
 	rows_source INT,
 	rows_loaded INT,
 	rows_diff INT,
-	file_path NVARCHAR(MAX),
+	source_path NVARCHAR(MAX),
 	err_message NVARCHAR(MAX),
 	CONSTRAINT pk_etl_step_run PRIMARY KEY(step_run_id),
 	CONSTRAINT fk_etl_step_run_etl_job_run FOREIGN KEY(job_run_id) REFERENCES [audit].etl_job_run(job_run_id)
