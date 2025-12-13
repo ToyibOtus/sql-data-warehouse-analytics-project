@@ -32,7 +32,7 @@ BEGIN
 	@step_duration INT,
 	@step_status NVARCHAR(50) = 'RUNNING',
 	@rows_loaded INT,
-	@file_path NVARCHAR(MAX) = 'C:\Users\PC\Documents\SQL_DataWareHouseProject\sql-data-warehouse-project\datasets\source_erp\cust_az12.csv',
+	@source_path NVARCHAR(MAX) = 'C:\Users\PC\Documents\SQL_DataWareHouseProject\sql-data-warehouse-project\datasets\source_erp\cust_az12.csv',
 	@sql NVARCHAR(MAX);
 
 	-- Capture start time
@@ -48,7 +48,7 @@ BEGIN
 		step_name,
 		start_time,
 		step_run_status,
-		file_path
+		source_path
 	)
 	VALUES
 	(
@@ -59,7 +59,7 @@ BEGIN
 		@step_name,
 		@start_time,
 		@step_status,
-		@file_path
+		@source_path
 	);
 
 	BEGIN TRY
@@ -69,7 +69,7 @@ BEGIN
 		TRUNCATE TABLE landing.erp_cust_az12;
 
 		-- Map string value to variable
-		SET @sql = 'BULK INSERT landing.erp_cust_az12 FROM ''' + @file_path + ''' WITH (FIRST_ROW = 2, FIELDTERMINATOR = '','', TABLOCK);';
+		SET @sql = 'BULK INSERT landing.erp_cust_az12 FROM ''' + @source_path + ''' WITH (FIRST_ROW = 2, FIELDTERMINATOR = '','', TABLOCK);';
 		-- Load data to table
 		EXEC (@sql);
 
