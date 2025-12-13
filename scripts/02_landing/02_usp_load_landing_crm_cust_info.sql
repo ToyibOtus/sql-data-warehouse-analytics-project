@@ -32,7 +32,7 @@ BEGIN
 	@step_duration INT,
 	@step_status NVARCHAR(50) = 'RUNNING',
 	@rows_loaded INT,
-	@file_path NVARCHAR(MAX) = 'C:\Users\PC\Documents\SQL_DataWareHouseProject\sql-data-warehouse-project\datasets\source_crm\cust_info.csv',
+	@source_path NVARCHAR(MAX) = 'C:\Users\PC\Documents\SQL_DataWareHouseProject\sql-data-warehouse-project\datasets\source_crm\cust_info.csv',
 	@sql NVARCHAR(MAX);
 
 	-- Capture start time
@@ -48,7 +48,7 @@ BEGIN
 		step_name, 
 		start_time, 
 		step_run_status, 
-		file_path
+		source_path
 	)
 	VALUES 
 	(
@@ -59,7 +59,7 @@ BEGIN
 		@step_name, 
 		@start_time, 
 		@step_status, 
-		@file_path
+		@source_path
 	);
 
 	BEGIN TRY
@@ -70,7 +70,7 @@ BEGIN
 		TRUNCATE TABLE landing.crm_cust_info;
 
 		-- Map string value to variable
-		SET @sql = 'BULK INSERT landing.crm_cust_info FROM ''' + @file_path + ''' WITH (FIRST_ROW = 2, FIELDTERMINATOR = '','', TABLOCK);';
+		SET @sql = 'BULK INSERT landing.crm_cust_info FROM ''' + @source_path + ''' WITH (FIRST_ROW = 2, FIELDTERMINATOR = '','', TABLOCK);';
 		-- Load data to table
 		EXEC (@sql);
 
@@ -84,7 +84,7 @@ BEGIN
 		SET @step_status = 'SUCCESS';
 
 		-- Update log table on success
-		UPDATE audit.etl_step_run
+		UPDATE [audit].etl_step_run
 		SET 
 			end_time = @end_time,
 			step_run_duration_seconds = @step_duration,
@@ -106,7 +106,7 @@ BEGIN
 		IF @rows_loaded IS NULL SET @rows_loaded = 0;
 
 		-- Update log table on failure
-		UPDATE audit.etl_step_run
+		UPDATE [audit].etl_step_run
 		SET 
 			end_time = @end_time,
 			step_run_duration_seconds = @step_duration,
