@@ -11,9 +11,9 @@ Parameter: @job_run_id UNIQUEIDENTIFIER = NULL
 Usage: EXEC bronze.usp_load_bronze_crm_cust_info;
 
 Note:
-	Running this script independently, return NULL to job_run_id (parameter) in log tables.
-	Ensure to run the master procedure as it assigns similar job_run_id across all tables & layers
-	within the same ETL run, and thus allowing for easy traceability & debugging.
+	* Running this script independently, return NULL to job_run_id (parameter) in log tables.
+	* Ensure to run the master procedure as it assigns similar job_run_id across all tables & layers
+	  within the same ETL run, and thus allowing for easy traceability & debugging.
 ===============================================================================================================
 */
 CREATE OR ALTER PROCEDURE bronze.usp_load_bronze_crm_cust_info @job_run_id UNIQUEIDENTIFIER = NULL AS
@@ -34,7 +34,7 @@ BEGIN
 	@rows_source INT,
 	@rows_loaded INT,
 	@rows_diff INT,
-	@source_path NVARCHAR(MAX) = 'landing.crm_cust_info';
+	@source_path NVARCHAR(50) = 'landing.crm_cust_info';
 
 	-- Capture start_time
 	SET @start_time = GETDATE();
@@ -120,7 +120,7 @@ BEGIN
 			cst_create_date,
 			dwh_step_run_id,
 			dwh_raw_row,
-			HASHBYTES('SHA2_256', UPPER(CAST(dwh_raw_row AS NVARCHAR(MAX))) COLLATE SQL_Latin1_General_CP1_CI_AS) AS dwh_row_hash
+			HASHBYTES('SHA2_256', UPPER(CAST(dwh_raw_row AS VARBINARY(MAX)))) AS dwh_row_hash
 		FROM
 		(
 		SELECT
@@ -132,8 +132,14 @@ BEGIN
 			cst_gndr,
 			cst_create_date,
 			@step_run_id AS dwh_step_run_id,
-			CONCAT_WS(',', cst_id,cst_key, cst_first_name, cst_last_name,
-			cst_marital_status, cst_gndr, cst_create_date) AS dwh_raw_row
+			CONCAT_WS('|', 
+			COALESCE(CAST(cst_id AS NVARCHAR(50)), '~'),
+			COALESCE(UPPER(CAST(cst_key AS NVARCHAR(50))), '~'), 
+			COALESCE(UPPER(CAST(cst_first_name AS NVARCHAR(50))), '~'), 
+			COALESCE(UPPER(CAST(cst_last_name AS NVARCHAR(50))), '~'),
+			COALESCE(UPPER(CAST(cst_marital_status AS NVARCHAR(50))), '~'), 
+			COALESCE(UPPER(CAST(cst_gndr AS NVARCHAR(50))), '~'), 
+			COALESCE(CONVERT(NVARCHAR(50), cst_create_date, 126), '~')) AS dwh_raw_row
 		FROM landing.crm_cust_info
 		)SUB;
 
