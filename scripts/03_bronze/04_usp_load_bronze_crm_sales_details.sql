@@ -70,24 +70,24 @@ BEGIN
 		-- Controlled error handling when row_source is NULL or zero
 		IF @rows_source IS NULL OR @rows_source = 0
 		BEGIN
-		SET @end_time = GETDATE();
-		SET @step_duration = DATEDIFF(second, @start_time, @end_time);
-		SET @step_status = 'FAILED';
-		SET @rows_source = 0;
-		SET @rows_loaded = 0;
-		SET @rows_diff = 0;
-
-		UPDATE [audit].etl_step_run
-		SET
-			end_time = @end_time,
-			step_run_duration_seconds = @step_duration,
-			step_run_status = @step_status,
-			rows_source = @rows_source,
-			rows_loaded = @rows_loaded,
-			rows_diff = @rows_diff
-		WHERE step_run_id = @step_run_id;
-
-		RETURN;
+			SET @end_time = GETDATE();
+			SET @step_duration = DATEDIFF(second, @start_time, @end_time);
+			SET @step_status = 'FAILED';
+			SET @rows_source = 0;
+			SET @rows_loaded = 0;
+			SET @rows_diff = 0;
+	
+			UPDATE [audit].etl_step_run
+			SET
+				end_time = @end_time,
+				step_run_duration_seconds = @step_duration,
+				step_run_status = @step_status,
+				rows_source = @rows_source,
+				rows_loaded = @rows_loaded,
+				rows_diff = @rows_diff
+			WHERE step_run_id = @step_run_id;
+	
+			RETURN;
 		END;
 
 		-- Begin Transaction
