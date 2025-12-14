@@ -134,11 +134,11 @@ BEGIN
 			@step_run_id AS dwh_step_run_id,
 			CONCAT_WS('|', 
 			COALESCE(CAST(cst_id AS NVARCHAR(50)), '~'),
-			COALESCE(UPPER(CAST(cst_key AS NVARCHAR(50))), '~'), 
-			COALESCE(UPPER(CAST(cst_first_name AS NVARCHAR(50))), '~'), 
-			COALESCE(UPPER(CAST(cst_last_name AS NVARCHAR(50))), '~'),
-			COALESCE(UPPER(CAST(cst_marital_status AS NVARCHAR(50))), '~'), 
-			COALESCE(UPPER(CAST(cst_gndr AS NVARCHAR(50))), '~'), 
+			COALESCE(TRIM(UPPER(CAST(cst_key AS NVARCHAR(50)))), '~'), 
+			COALESCE(TRIM(UPPER(CAST(cst_first_name AS NVARCHAR(50)))), '~'), 
+			COALESCE(TRIM(UPPER(CAST(cst_last_name AS NVARCHAR(50)))), '~'),
+			COALESCE(TRIM(UPPER(CAST(cst_marital_status AS NVARCHAR(50)))), '~'), 
+			COALESCE(TRIM(UPPER(CAST(cst_gndr AS NVARCHAR(50)))), '~'), 
 			COALESCE(CONVERT(NVARCHAR(50), cst_create_date, 126), '~')) AS dwh_raw_row
 		FROM landing.crm_cust_info
 		)SUB;
