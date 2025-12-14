@@ -117,21 +117,23 @@ BEGIN
 		-- Insert error_details into log table
 		INSERT INTO [audit].etl_error_log
 		(
-			job_run_id,
-			step_run_id,
+			job_run_id, 
+			step_run_id, 
 			err_procedure,
-			err_message,
-			err_state,
+			err_number,
+			err_message, 
+			err_state, 
 			err_line,
 			err_severity
 		)
 		VALUES
 		(
-			@job_run_id,
-			@step_run_id,
+			@job_run_id, 
+			@step_run_id, 
 			@step_name,
-			ERROR_MESSAGE(),
-			ERROR_STATE(),
+			ERROR_NUMBER(),
+			ERROR_MESSAGE(), 
+			ERROR_STATE(), 
 			ERROR_LINE(),
 			ERROR_SEVERITY()
 		);
