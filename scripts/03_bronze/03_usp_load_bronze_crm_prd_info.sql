@@ -134,10 +134,10 @@ BEGIN
 				@step_run_id AS dwh_step_run_id,
 				CONCAT_WS('|', 
 				COALESCE(CAST(prd_id AS NVARCHAR(50)), '~'), 
-				COALESCE(UPPER(CAST(prd_key AS NVARCHAR(50))), '~'), 
-				COALESCE(UPPER(CAST(prd_nm AS NVARCHAR(50))), '~'), 
+				COALESCE(TRIM(UPPER(CAST(prd_key AS NVARCHAR(50)))), '~'), 
+				COALESCE(TRIM(UPPER(CAST(prd_nm AS NVARCHAR(50)))), '~'), 
 				COALESCE(CAST(prd_cost AS NVARCHAR(50)), '~'), 
-				COALESCE(UPPER(CAST(prd_line AS NVARCHAR(50))), '~'), 
+				COALESCE(TRIM(UPPER(CAST(prd_line AS NVARCHAR(50)))), '~'), 
 				COALESCE(CONVERT(NVARCHAR(50), prd_start_dt, 126), '~'), 
 				COALESCE(CONVERT(NVARCHAR(50), prd_end_dt, 126), '~')) AS dwh_raw_row
 			FROM landing.crm_prd_info
