@@ -4,7 +4,7 @@ Create Database & Schemas
 ==================================================================================================
 Script Purpose:
 	Creates the database [MyDatabase] and the Medallion Architecture schemas:
-    landing, bronze, silver, gold, audit.
+    landing, bronze, silver, silver.stg, gold, audit.
 
 Warning:
 	This script permanently deletes the database [Mydatabase] and all data in it.
@@ -41,10 +41,16 @@ GO
 CREATE SCHEMA silver;
 GO
 
+-- Create schema [silver.stg]
+CREATE SCHEMA silver.stg
+GO
+
 -- Create schema [gold]
 CREATE SCHEMA gold;
 GO
-
+	
 -- Create schema [audit]
 CREATE SCHEMA [audit];
 GO
+
+
