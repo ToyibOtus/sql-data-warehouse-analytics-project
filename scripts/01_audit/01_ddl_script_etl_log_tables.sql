@@ -9,6 +9,31 @@ Script Purpose:
 	Run this script to change the structure of your ETL log tables.
 ======================================================================================
 */
+-- Drop Foreign key [fk_etl_step_run_etl_job_run]
+IF EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name = 'fk_etl_step_run_etl_job_run')
+ALTER TABLE [audit].etl_step_run
+DROP CONSTRAINT fk_etl_step_run_etl_job_run;
+
+-- Drop Foreign key [fk_etl_error_log_etl_job_run]
+IF EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name = 'fk_etl_error_log_etl_job_run')
+ALTER TABLE [audit].etl_error_log
+DROP CONSTRAINT fk_etl_error_log_etl_job_run;
+
+-- Drop Foreign key [fk_etl_data_quality_etl_job_run]
+IF EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name = 'fk_etl_data_quality_etl_job_run')
+ALTER TABLE [audit].etl_data_quality
+DROP CONSTRAINT fk_etl_data_quality_etl_job_run;
+
+-- Drop Foreign key [fk_etl_error_log_etl_step_run]
+IF EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name = 'fk_etl_error_log_etl_step_run')
+ALTER TABLE [audit].etl_error_log
+DROP CONSTRAINT fk_etl_error_log_etl_step_run;
+
+-- Drop Foreign key [fk_etl_data_quality_etl_step_run]
+IF EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name = 'fk_etl_data_quality_etl_step_run')
+ALTER TABLE [audit].etl_data_quality
+DROP CONSTRAINT fk_etl_data_quality_etl_step_run;
+
 -- Create log table [audit].etl_job_run
 IF OBJECT_ID('[audit].etl_job_run', 'U') IS NOT NULL
 DROP TABLE [audit].etl_job_run;
@@ -64,6 +89,7 @@ CREATE TABLE [audit].etl_error_log
 	step_run_id UNIQUEIDENTIFIER NOT NULL,
 	err_procedure NVARCHAR(50) NOT NULL,
 	err_timestamp DATETIME DEFAULT GETDATE() NOT NULL,
+	err_number INT NOT NULL,
 	err_message NVARCHAR(MAX) NOT NULL,
 	err_state INT NOT NULL,
 	err_line INT NOT NULL,
@@ -80,14 +106,14 @@ GO
 
 CREATE TABLE [audit].etl_data_quality
 (
-	dq_run_id UNIQUEIDENTIFIER NOT NULL,
+	dq_run_id UNIQUEIDENTIFIER DEFAULT NEWID() NOT NULL,
 	job_run_id UNIQUEIDENTIFIER,
 	step_run_id UNIQUEIDENTIFIER NOT NULL,
 	dq_timestamp DATETIME DEFAULT GETDATE() NOT NULL,
 	dq_check_name NVARCHAR(50) NOT NULL,
+	rows_checked INT,
+	rows_failed INT,
 	dq_status NVARCHAR(50) NOT NULL,
-	expected_rows INT,
-	actual_rows INT,
 	err_detail NVARCHAR(1000),
 	CONSTRAINT pk_etl_data_quality PRIMARY KEY(dq_run_id),
 	CONSTRAINT fk_etl_data_quality_etl_job_run FOREIGN KEY(job_run_id) REFERENCES [audit].etl_job_run(job_run_id),
