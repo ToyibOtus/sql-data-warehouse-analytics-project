@@ -70,45 +70,8 @@ BEGIN
 		-- Delete data in silver staging table
 		TRUNCATE TABLE silver_stg.crm_cust_info;
 
-		-- Retrieve new records from bronze, transform them and load them into a corresponding silver_stg table
-		INSERT INTO silver_stg.crm_cust_info
-		(
-			cst_id,
-			cst_key,
-			cst_first_name,
-			cst_last_name,
-			cst_marital_status,
-			cst_gndr,
-			cst_create_date,
-			dwh_step_run_id,
-			dwh_raw_row,
-			dwh_row_hash
-		)
-		SELECT
-			ssci.cst_id,
-			ssci.cst_key,
-			ssci.cst_first_name,
-			ssci.cst_last_name,
-			ssci.cst_marital_status,
-			ssci.cst_gndr,
-			ssci.cst_create_date,
-			ssci.dwh_step_run_id,
-			ssci.dwh_raw_row,
-			ssci.dwh_row_hash
-		FROM
-		(
-		SELECT
-			cst_id,
-			cst_key,
-			cst_first_name,
-			cst_last_name,
-			cst_marital_status,
-			cst_gndr,
-			cst_create_date,
-			dwh_step_run_id,
-			dwh_raw_row,
-			HASHBYTES('SHA2_256', CAST(dwh_raw_row AS VARBINARY(MAX))) AS dwh_row_hash
-		FROM
+		-- Perform data transformations on source table
+		WITH data_transformations AS
 		(
 			SELECT
 				cst_id,
@@ -125,24 +88,7 @@ BEGIN
 					WHEN UPPER(TRIM(cst_gndr)) = 'M' THEN 'Male'
 					ELSE 'Unknown'
 				END AS cst_gndr,
-				cst_create_date,
-				@step_run_id AS dwh_step_run_id,
-				CONCAT_WS('|',
-				cst_id,
-				cst_key,
-				TRIM(cst_first_name),
-				TRIM(cst_last_name),
-				CASE
-					WHEN UPPER(TRIM(cst_marital_status)) = 'M' THEN 'Married'
-					WHEN UPPER(TRIM(cst_marital_status)) = 'S' THEN 'Single'
-					ELSE 'Unknown'
-				END,
-				CASE	
-					WHEN UPPER(TRIM(cst_gndr)) = 'F' THEN 'Female'
-					WHEN UPPER(TRIM(cst_gndr)) = 'M' THEN 'Male'
-					ELSE 'Unknown'
-				END,
-				cst_create_date) AS dwh_raw_row
+				cst_create_date
 			FROM
 			(
 				SELECT
@@ -158,10 +104,64 @@ BEGIN
 				WHERE cst_id IS NOT NULL
 			)SUB1
 			WHERE flag = 1
-		)SUB2
-		)ssci
+		)
+		, metadata_columns AS
+		(
+			SELECT
+				cst_id,
+				cst_key,
+				cst_first_name,
+				cst_last_name,
+				cst_marital_status,
+				cst_gndr,
+				cst_create_date,
+				@step_run_id AS dwh_step_run_id,
+				CONCAT_WS('|',
+				cst_id,
+				cst_key,
+				cst_first_name,
+				cst_last_name,
+				cst_marital_status,
+				cst_gndr,
+				cst_create_date) AS dwh_raw_row,
+				HASHBYTES('SHA2_256', CAST(CONCAT_WS('|',
+				cst_id,
+				cst_key,
+				cst_first_name,
+				cst_last_name,
+				cst_marital_status,
+				cst_gndr,
+				cst_create_date) AS VARBINARY(MAX))) AS dwh_row_hash
+			FROM data_transformations
+		)
+		-- Retrieve newly transformed records and load into corresponding silver staging table
+		INSERT INTO silver_stg.crm_cust_info
+		(
+			cst_id,
+			cst_key,
+			cst_first_name,
+			cst_last_name,
+			cst_marital_status,
+			cst_gndr,
+			cst_create_date,
+			dwh_step_run_id,
+			dwh_raw_row,
+			dwh_row_hash
+		)
+		SELECT
+			mc.cst_id,
+			mc.cst_key,
+			mc.cst_first_name,
+			mc.cst_last_name,
+			mc.cst_marital_status,
+			mc.cst_gndr,
+			mc.cst_create_date,
+			mc.dwh_step_run_id,
+			mc.dwh_raw_row,
+			mc.dwh_row_hash
+		FROM metadata_columns mc
 		LEFT JOIN silver.crm_cust_info sci
-		ON ssci.cst_id = sci.cst_id AND ssci.dwh_row_hash = sci.dwh_row_hash
+		ON mc.cst_id = sci.cst_id AND mc.dwh_row_hash = sci.dwh_row_hash
 		WHERE sci.dwh_row_hash IS NULL;
 
 		-- Retrieve total number of new records from silver_stg
@@ -184,7 +184,8 @@ BEGIN
 				step_run_status = @step_status,
 				rows_source = @rows_source,
 				rows_loaded = @rows_loaded,
-				rows_diff = @rows_diff
+				rows_diff = @rows_diff,
+				err_message = 'No new records from source table "' + @source_path + '".'
 			WHERE step_run_id = @step_run_id;
 
 			RETURN;
@@ -197,7 +198,8 @@ BEGIN
 		SELECT
 			COUNT(*) AS rows_checked,
 			SUM(CASE WHEN cst_id IS NULL THEN 1 ELSE 0 END) AS pk_nulls,
-			COUNT(cst_id) - COUNT(DISTINCT cst_id) AS pK_duplicates,
+			(SELECT COUNT(pk_duplicates) FROM ((SELECT cst_id, COUNT(*) AS pk_duplicates FROM  silver_stg.crm_cust_info 
+			GROUP BY cst_id HAVING COUNT(*) > 1))SUB1) AS pK_duplicates,
 			SUM(CASE WHEN cst_key <> TRIM(cst_key) THEN 1 ELSE 0 END) AS cst_key_untrimmed,
 			SUM(CASE WHEN cst_first_name <> TRIM(cst_first_name) THEN 1 ELSE 0 END) AS cst_first_name_untrimmed,
 			SUM(CASE WHEN cst_last_name <> TRIM(cst_last_name) THEN 1 ELSE 0 END) AS cst_last_name_untrimmed,
@@ -238,9 +240,11 @@ BEGIN
 		CASE WHEN invalid_gndr > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info;
 
 		-- Map values to variables
-		SELECT @pk_nulls = pk_nulls FROM #dq_metric_crm_cust_info;
+		SELECT @pk_nulls = rows_failed FROM [audit].etl_data_quality
+		WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_nulls';
 
-		SELECT @pk_duplicates = pk_duplicates FROM #dq_metric_crm_cust_info;
+		SELECT @pk_duplicates = rows_failed FROM [audit].etl_data_quality
+		WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_duplicates';
 
 		-- Update table etl_data_quality when PK contain NULLs
 		IF @pk_nulls > 0
@@ -275,7 +279,7 @@ BEGIN
 				rows_source = @rows_source,
 				rows_loaded = @rows_loaded,
 				rows_diff = @rows_diff,
-				err_message = 'Critical data quality rule violated. Check etl_data_quality to know which rule was violated.'
+				err_message = 'Critical data quality rule violated. Check log table "etl_data_quality" to know which rule was violated.'
 			WHERE step_run_id = @step_run_id;
 
 			RETURN;
