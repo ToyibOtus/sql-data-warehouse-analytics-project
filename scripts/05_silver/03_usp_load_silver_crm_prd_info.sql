@@ -123,7 +123,7 @@ BEGIN
 			prd_end_dt) AS VARBINARY(MAX))) AS dwh_row_hash
 		FROM data_transformations
 		)
-		-- Retrieve new records from bronze, transform them and load them into a corresponding silver_stg table
+		-- Retrieve newly transformed records and load into corresponding silver staging table
 		INSERT INTO silver_stg.crm_prd_info
 		(
 			prd_id,
