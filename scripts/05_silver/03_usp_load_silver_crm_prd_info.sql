@@ -63,7 +63,7 @@ BEGIN
 		@start_time,
 		@step_status,
 		@source_path
-	)
+	);
 	BEGIN TRY
 		-- Delete data in silver staging table
 		TRUNCATE TABLE silver_stg.crm_prd_info;
@@ -205,30 +205,32 @@ BEGIN
 		(
 			job_run_id,
 			step_run_id,
+			dq_layer,
+			dq_table_name,
 			dq_check_name,
 			rows_checked,
 			rows_failed,
 			dq_status
 		)
-		SELECT @job_run_id, @step_run_id, 'pk_nulls', rows_checked, pk_nulls AS rows_failed,
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'pk_nulls', rows_checked, pk_nulls AS rows_failed,
 		CASE WHEN pk_nulls > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, 'pk_duplicates', rows_checked, pk_duplicates AS rows_failed,
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'pk_duplicates', rows_checked, pk_duplicates AS rows_failed,
 		CASE WHEN pk_duplicates > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, 'prd_nm_untrimmed', rows_checked, prd_nm_untrimmed AS rows_failed,
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'prd_nm_untrimmed', rows_checked, prd_nm_untrimmed AS rows_failed,
 		CASE WHEN prd_nm_untrimmed > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, 'invalid_cost', rows_checked, invalid_cost AS rows_failed,
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_cost', rows_checked, invalid_cost AS rows_failed,
 		CASE WHEN invalid_cost > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, 'invalid_prd_line', rows_checked, invalid_prd_line AS rows_failed,
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_prd_line', rows_checked, invalid_prd_line AS rows_failed,
 		CASE WHEN invalid_prd_line > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, 'invalid_prd_start_dt', rows_checked, invalid_prd_start_dt AS rows_failed,
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_prd_start_dt', rows_checked, invalid_prd_start_dt AS rows_failed,
 		CASE WHEN invalid_prd_start_dt > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, 'invalid_prd_end_dt', rows_checked, invalid_prd_end_dt AS rows_failed,
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_prd_end_dt', rows_checked, invalid_prd_end_dt AS rows_failed,
 		CASE WHEN invalid_prd_end_dt > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info;
 
 		-- Map values to variables
