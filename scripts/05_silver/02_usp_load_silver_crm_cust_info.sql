@@ -213,30 +213,32 @@ BEGIN
 		(
 			job_run_id,
 			step_run_id,
+			dq_layer,
+			dq_table_name,
 			dq_check_name,
 			rows_checked,
 			rows_failed,
 			dq_status
 		)
-		SELECT @job_run_id, @step_run_id, 'pk_null', rows_checked, pk_nulls AS rows_failed, 
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'pk_null', rows_checked, pk_nulls AS rows_failed, 
 		CASE WHEN pk_nulls > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, 'pk_duplicate', rows_checked, pk_duplicates AS rows_failed, 
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'pk_duplicate', rows_checked, pk_duplicates AS rows_failed, 
 		CASE WHEN pk_duplicates > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, 'cst_key_untrimmed', rows_checked, cst_key_untrimmed AS rows_failed, 
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'cst_key_untrimmed', rows_checked, cst_key_untrimmed AS rows_failed, 
 		CASE WHEN cst_key_untrimmed > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, 'cst_first_name_untrimmed', rows_checked, cst_first_name_untrimmed AS rows_failed, 
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'cst_first_name_untrimmed', rows_checked, cst_first_name_untrimmed AS rows_failed, 
 		CASE WHEN cst_first_name_untrimmed > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, 'cst_last_name_untrimmed', rows_checked, cst_last_name_untrimmed AS rows_failed, 
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'cst_last_name_untrimmed', rows_checked, cst_last_name_untrimmed AS rows_failed, 
 		CASE WHEN cst_last_name_untrimmed > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, 'invalid_marital_status', rows_checked, invalid_marital_status AS rows_failed, 
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_marital_status', rows_checked, invalid_marital_status AS rows_failed, 
 		CASE WHEN invalid_marital_status > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, 'invalid_gndr', rows_checked, invalid_gndr AS rows_failed, 
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_gndr', rows_checked, invalid_gndr AS rows_failed, 
 		CASE WHEN invalid_gndr > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info;
 
 		-- Map values to variables
