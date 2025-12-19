@@ -10,10 +10,6 @@ Script Purpose:
 ======================================================================================
 */
 -- Create log table [audit].etl_job_run
-IF OBJECT_ID('[audit].etl_job_run', 'U') IS NOT NULL
-DROP TABLE [audit].etl_job_run;
-GO
-
 CREATE TABLE [audit].etl_job_run
 (
 	job_run_id UNIQUEIDENTIFIER NOT NULL,
@@ -28,10 +24,6 @@ CREATE TABLE [audit].etl_job_run
 );
 
 -- Create log table [audit].etl_step_run
-IF OBJECT_ID('[audit].etl_step_run', 'U') IS NOT NULL
-DROP TABLE [audit].etl_step_run;
-GO
-
 CREATE TABLE [audit].etl_step_run
 (
 	step_run_id UNIQUEIDENTIFIER NOT NULL,
@@ -53,10 +45,6 @@ CREATE TABLE [audit].etl_step_run
 );
 
 -- Create log table [audit].etl_error_log
-IF OBJECT_ID('[audit].etl_error_log', 'U') IS NOT NULL
-DROP TABLE [audit].etl_error_log;
-GO
-
 CREATE TABLE [audit].etl_error_log
 (
 	error_run_id UNIQUEIDENTIFIER DEFAULT NEWID() NOT NULL,
@@ -75,10 +63,6 @@ CREATE TABLE [audit].etl_error_log
 );
 
 -- Create log table [audit].etl_data_quality
-IF OBJECT_ID('[audit].etl_data_quality', 'U') IS NOT NULL
-DROP TABLE [audit].etl_data_quality;
-GO
-
 CREATE TABLE [audit].etl_data_quality
 (
 	dq_run_id UNIQUEIDENTIFIER DEFAULT NEWID() NOT NULL,
