@@ -65,7 +65,7 @@ BEGIN
 		@start_time,
 		@step_status,
 		@source_path
-	)
+	);
 	BEGIN TRY
 		-- Delete data in silver staging table
 		TRUNCATE TABLE silver_stg.crm_cust_info;
@@ -75,7 +75,7 @@ BEGIN
 		(
 			SELECT
 				cst_id,
-				cst_key,
+				TRIM(cst_key) AS cst_key,
 				TRIM(cst_first_name) AS cst_first_name,
 				TRIM(cst_last_name) AS cst_last_name,
 				CASE
@@ -125,13 +125,13 @@ BEGIN
 				cst_gndr,
 				cst_create_date) AS dwh_raw_row,
 				HASHBYTES('SHA2_256', CAST(CONCAT_WS('|',
-				cst_id,
-				cst_key,
-				cst_first_name,
-				cst_last_name,
-				cst_marital_status,
-				cst_gndr,
-				cst_create_date) AS VARBINARY(MAX))) AS dwh_row_hash
+				COALESCE(cst_id, '~'),
+				COALESCE(cst_key, '~'),
+				COALESCE(cst_first_name, '~'),
+				COALESCE(cst_last_name, '~'),
+				COALESCE(cst_marital_status, '~'),
+				COALESCE(cst_gndr, '~'),
+				COALESCE(cst_create_date, '~')) AS VARBINARY(MAX))) AS dwh_row_hash
 			FROM data_transformations
 		)
 		-- Retrieve newly transformed records and load into corresponding silver staging table
@@ -172,7 +172,7 @@ BEGIN
 		BEGIN
 			SET @end_time = GETDATE();
 			SET @step_duration = DATEDIFF(second, @start_time, @end_time);
-			SET @step_status = 'FAILED';
+			SET @step_status = 'NO OPERATION';
 			SET @rows_source = 0;
 			SET @rows_loaded = 0;
 			SET @rows_diff = 0;
@@ -185,7 +185,7 @@ BEGIN
 				rows_source = @rows_source,
 				rows_loaded = @rows_loaded,
 				rows_diff = @rows_diff,
-				err_message = 'No new records from source table "' + @source_path + '".'
+				msg = 'No new records from source table "' + @source_path + '".'
 			WHERE step_run_id = @step_run_id;
 
 			RETURN;
@@ -198,8 +198,7 @@ BEGIN
 		SELECT
 			COUNT(*) AS rows_checked,
 			SUM(CASE WHEN cst_id IS NULL THEN 1 ELSE 0 END) AS pk_nulls,
-			(SELECT COUNT(pk_duplicates) FROM ((SELECT cst_id, COUNT(*) AS pk_duplicates FROM  silver_stg.crm_cust_info 
-			GROUP BY cst_id HAVING COUNT(*) > 1))SUB1) AS pK_duplicates,
+			COUNT(cst_id) - COUNT(DISTINCT cst_id) AS pk_duplicates,
 			SUM(CASE WHEN cst_key <> TRIM(cst_key) THEN 1 ELSE 0 END) AS cst_key_untrimmed,
 			SUM(CASE WHEN cst_first_name <> TRIM(cst_first_name) THEN 1 ELSE 0 END) AS cst_first_name_untrimmed,
 			SUM(CASE WHEN cst_last_name <> TRIM(cst_last_name) THEN 1 ELSE 0 END) AS cst_last_name_untrimmed,
@@ -218,54 +217,27 @@ BEGIN
 			dq_check_name,
 			rows_checked,
 			rows_failed,
-			dq_status
+			dq_status,
+			err_detail
 		)
-		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'pk_null', rows_checked, pk_nulls AS rows_failed, 
-		CASE WHEN pk_nulls > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'pk_nulls', rows_checked, pk_nulls AS rows_failed, 
+		CASE WHEN pk_nulls > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN pk_nulls > 0 THEN 
+		'CRITCAL RULE "pk_nulls" VIOLATED: Unable to load "' + @table_name + '".' ELSE NULL END AS err_detail
+		FROM #dq_metric_crm_cust_info
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'pk_duplicate', rows_checked, pk_duplicates AS rows_failed, 
-		CASE WHEN pk_duplicates > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info
-		UNION ALL
-		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'cst_key_untrimmed', rows_checked, cst_key_untrimmed AS rows_failed, 
-		CASE WHEN cst_key_untrimmed > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info
-		UNION ALL
-		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'cst_first_name_untrimmed', rows_checked, cst_first_name_untrimmed AS rows_failed, 
-		CASE WHEN cst_first_name_untrimmed > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info
-		UNION ALL
-		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'cst_last_name_untrimmed', rows_checked, cst_last_name_untrimmed AS rows_failed, 
-		CASE WHEN cst_last_name_untrimmed > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info
-		UNION ALL
-		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_marital_status', rows_checked, invalid_marital_status AS rows_failed, 
-		CASE WHEN invalid_marital_status > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info
-		UNION ALL
-		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_gndr', rows_checked, invalid_gndr AS rows_failed, 
-		CASE WHEN invalid_gndr > 0 THEN 'FAILED' ELSE 'SUCCESS' END FROM #dq_metric_crm_cust_info;
-
-		-- Map values to variables
-		SELECT @pk_nulls = rows_failed FROM [audit].etl_data_quality
-		WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_nulls';
-
-		SELECT @pk_duplicates = rows_failed FROM [audit].etl_data_quality
-		WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_duplicates';
-
-		-- Update table etl_data_quality when PK contain NULLs
-		IF @pk_nulls > 0
-		BEGIN
-			UPDATE [audit].etl_data_quality
-				SET err_detail = 'Critical DQ Failure: pk_null'
-			WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_null';
-		END;
-
-		-- Update table etl_data_quality when PK exist as duplicates
-		IF @pk_duplicates > 0
-		BEGIN
-			UPDATE [audit].etl_data_quality
-				SET err_detail = 'Critical DQ Failure: pk_duplicate'
-			WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_duplicate';
-		END;
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'pk_duplicates', rows_checked, pk_duplicates AS rows_failed, 
+		CASE WHEN pk_duplicates > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN pk_duplicates > 0 THEN 
+		'CRITCAL RULE "pk_duplicates" VIOLATED: Unable to load "' + @table_name + '".' ELSE NULL END AS err_detail
+		FROM #dq_metric_crm_cust_info;
 
 		-- Controlled error handling when critical data quality rule is violated
-		IF @pk_nulls > 0 OR @pk_duplicates > 0
+		IF EXISTS
+		(
+			SELECT 1 FROM [audit].etl_data_quality dq INNER JOIN [audit].etl_data_quality_control dqc
+			ON dq.dq_layer = dqc.dq_layer AND dq.dq_table_name = dqc.dq_table_name AND dq.dq_check_name = dqc.dq_check_name
+			WHERE (dq.step_run_id = @step_run_id) AND (dq.dq_check_name = 'pk_nulls' OR dq.dq_check_name = 'pk_duplicates') 
+			AND (dq.dq_status = 'FAILED')
+		)
 		BEGIN
 			SET @end_time = GETDATE();
 			SET @step_duration = DATEDIFF(second, @start_time, @end_time);
@@ -281,7 +253,7 @@ BEGIN
 				rows_source = @rows_source,
 				rows_loaded = @rows_loaded,
 				rows_diff = @rows_diff,
-				err_message = 'Critical data quality rule violated. Check log table "etl_data_quality" to know which rule was violated.'
+				msg = 'Critical data quality rule violated. Check log table "etl_data_quality" to know which rule was violated.'
 			WHERE step_run_id = @step_run_id;
 
 			RETURN;
@@ -391,7 +363,7 @@ BEGIN
 			rows_source = @rows_source,
 			rows_loaded = @rows_loaded,
 			rows_diff = @rows_diff,
-			err_message = ERROR_MESSAGE()
+			msg = ERROR_MESSAGE()
 		WHERE step_run_id = @step_run_id;
 
 		-- Load error details into log table
