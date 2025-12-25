@@ -3,8 +3,9 @@
 DDL Script: Build ETL Log Tables
 ======================================================================================
 Script Purpose:
-	This script builds and designs the structure of 4 ETL log tables:
-	[etl_job_run], [etl_step_run], [etl_error_log], and [etl_data_quality].
+	This script builds and designs the structure of 5 ETL log tables:
+	[etl_job_run], [etl_step_run], [etl_error_log], and [etl_data_quality],
+	etl_data_quality_control.
 
 	Run this script to change the structure of your ETL log tables.
 ======================================================================================
@@ -39,9 +40,10 @@ CREATE TABLE [audit].etl_step_run
 	rows_loaded INT,
 	rows_diff INT,
 	source_path NVARCHAR(MAX),
-	err_message NVARCHAR(MAX),
+	msg NVARCHAR(MAX),
 	CONSTRAINT pk_etl_step_run PRIMARY KEY(step_run_id),
-	CONSTRAINT fk_etl_step_run_etl_job_run FOREIGN KEY(job_run_id) REFERENCES [audit].etl_job_run(job_run_id)
+	CONSTRAINT fk_etl_step_run_etl_job_run FOREIGN KEY(job_run_id) REFERENCES [audit].etl_job_run(job_run_id),
+	CONSTRAINT chk_step_run_status CHECK(step_run_status IN ('RUNNING', 'NO OPERATION', 'SUCCESS', 'FAILURE'))
 );
 
 -- Create log table [audit].etl_error_log
@@ -79,4 +81,20 @@ CREATE TABLE [audit].etl_data_quality
 	CONSTRAINT pk_etl_data_quality PRIMARY KEY(dq_run_id),
 	CONSTRAINT fk_etl_data_quality_etl_job_run FOREIGN KEY(job_run_id) REFERENCES [audit].etl_job_run(job_run_id),
 	CONSTRAINT fk_etl_data_quality_etl_step_run FOREIGN KEY(step_run_id) REFERENCES [audit].etl_step_run(step_run_id)
+);
+
+-- Create log table [audit].etl_data_quality_control
+CREATE TABLE [audit].etl_data_quality_control
+(
+	dq_control_id UNIQUEIDENTIFIER DEFAULT NEWID() NOT NULL,
+	dq_layer NVARCHAR(50) NOT NULL,
+	dq_table_name NVARCHAR(50) NOT NULL,
+	dq_check_name NVARCHAR(50) NOT NULL,
+	dq_severity NVARCHAR(50) NOT NULL,
+	stop_on_failure BIT NOT NULL,
+	is_active BIT NOT NULL,
+	dq_create_date DATETIME DEFAULT GETDATE() NOT NULL
+	CONSTRAINT pk_data_quality_control PRIMARY KEY(dq_control_id),
+	CONSTRAINT uq_data_quality_rule UNIQUE (dq_layer, dq_table_name, dq_check_name),
+	CONSTRAINT chk_data_quality_severity CHECK (dq_severity IN ('CRITICAL', 'WARNING', 'INFO'))
 );
