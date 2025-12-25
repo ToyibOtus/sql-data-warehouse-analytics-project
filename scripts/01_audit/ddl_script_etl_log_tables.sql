@@ -43,7 +43,7 @@ CREATE TABLE [audit].etl_step_run
 	msg NVARCHAR(MAX),
 	CONSTRAINT pk_etl_step_run PRIMARY KEY(step_run_id),
 	CONSTRAINT fk_etl_step_run_etl_job_run FOREIGN KEY(job_run_id) REFERENCES [audit].etl_job_run(job_run_id),
-	CONSTRAINT chk_step_run_status CHECK(step_run_status IN ('RUNNING', 'NO OPERATION', 'SUCCESS', 'FAILURE'))
+	CONSTRAINT chk_step_run_status CHECK(step_run_status IN ('RUNNING', 'NO OPERATION', 'SUCCESS', 'FAILED'))
 );
 
 -- Create log table [audit].etl_error_log
