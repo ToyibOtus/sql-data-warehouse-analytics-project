@@ -76,7 +76,7 @@ BEGIN
 			SET @rows_source = 0;
 			SET @rows_loaded = 0;
 			SET @rows_diff = 0;
-	
+
 			UPDATE [audit].etl_step_run
 			SET
 				end_time = @end_time,
@@ -86,7 +86,7 @@ BEGIN
 				rows_loaded = @rows_loaded,
 				rows_diff = @rows_diff
 			WHERE step_run_id = @step_run_id;
-	
+
 			RETURN;
 		END;
 
@@ -202,7 +202,7 @@ BEGIN
 			rows_source = @rows_source,
 			rows_loaded = @rows_loaded,
 			rows_diff = @rows_diff,
-			err_message = ERROR_MESSAGE()
+			msg = ERROR_MESSAGE()
 		WHERE step_run_id = @step_run_id;
 
 		-- Insert error details into log table
