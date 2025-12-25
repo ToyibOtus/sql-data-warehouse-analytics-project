@@ -75,7 +75,7 @@ BEGIN
 			prd_id,
 			REPLACE(LEFT(TRIM(prd_key), 5), '-', '_') AS cat_id,
 			SUBSTRING(TRIM(prd_key), 7, LEN(prd_key)) AS prd_key,
-			prd_nm,
+			TRIM(prd_nm) AS prd_nm,
 			prd_cost,
 			CASE UPPER(TRIM(prd_line))
 				WHEN 'M' THEN 'Mountain'
@@ -113,14 +113,14 @@ BEGIN
 			prd_start_dt,
 			prd_end_dt) AS dwh_raw_row,
 			HASHBYTES('SHA2_256', CAST(CONCAT_WS('|',
-			prd_id,
-			cat_id,
-			prd_key,
-			prd_nm,
-			prd_cost,
-			prd_line,
-			prd_start_dt,
-			prd_end_dt) AS VARBINARY(MAX))) AS dwh_row_hash
+			COALESCE(prd_id, '~'),
+			COALESCE(cat_id, '~'),
+			COALESCE(prd_key, '~'),
+			COALESCE(prd_nm, '~'),
+			COALESCE(prd_cost, '~'),
+			COALESCE(prd_line, '~'),
+			COALESCE(prd_start_dt, '~'),
+			COALESCE(prd_end_dt, '~')) AS VARBINARY(MAX))) AS dwh_row_hash
 		FROM data_transformations
 		)
 		-- Retrieve newly transformed records and load into corresponding silver staging table
@@ -164,7 +164,7 @@ BEGIN
 		BEGIN
 			SET @end_time = GETDATE();
 			SET @step_duration = DATEDIFF(second, @start_time, @end_time);
-			SET @step_status = 'FAILED';
+			SET @step_status = 'NO OPERATION';
 			SET @rows_source = 0;
 			SET @rows_loaded = 0;
 			SET @rows_diff = 0;
@@ -177,7 +177,7 @@ BEGIN
 					rows_source = @rows_source,
 					rows_loaded = @rows_loaded,
 					rows_diff = @rows_diff,
-					err_message = 'No new records from source table "' + @source_path + '".'
+					msg = 'No new records from source table "' + @source_path + '".'
 				WHERE step_run_id = @step_run_id;
 
 			RETURN;
@@ -190,8 +190,7 @@ BEGIN
 		SELECT
 			COUNT(*) AS rows_checked,
 			SUM(CASE WHEN prd_id IS NULL THEN 1 ELSE 0 END)  AS pk_nulls,
-			(SELECT COUNT(pk_duplicates) FROM ((SELECT prd_id, COUNT(*) AS pk_duplicates FROM  silver_stg.crm_prd_info 
-			GROUP BY prd_id HAVING COUNT(*) > 1))SUB1) AS pk_duplicates,
+			COUNT(prd_id) - COUNT(DISTINCT prd_id) AS pk_duplicates,
 			SUM(CASE WHEN prd_nm != TRIM(prd_nm) THEN 1 ELSE 0 END) AS prd_nm_untrimmed,
 			SUM(CASE WHEN prd_cost <= 0 OR prd_cost IS NULL THEN 1 ELSE 0 END) AS invalid_cost,
 			SUM(CASE WHEN prd_line NOT IN('Mountain', 'Road', 'Other Sales', 'Touring', 'Unknown') THEN 1 ELSE 0 END) AS invalid_prd_line,
@@ -210,54 +209,46 @@ BEGIN
 			dq_check_name,
 			rows_checked,
 			rows_failed,
-			dq_status
+			dq_status,
+			err_detail
 		)
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'pk_nulls', rows_checked, pk_nulls AS rows_failed,
-		CASE WHEN pk_nulls > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info
+		CASE WHEN pk_nulls > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN pk_nulls > 0 THEN
+		'CRITCAL RULE "pk_nulls" VIOLATED: Unable to load "' + @table_name + '".' ELSE NULL END AS err_detail 
+		FROM #dq_metrics_crm_prd_info
 		UNION ALL
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'pk_duplicates', rows_checked, pk_duplicates AS rows_failed,
-		CASE WHEN pk_duplicates > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info
-		UNION ALL
-		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'prd_nm_untrimmed', rows_checked, prd_nm_untrimmed AS rows_failed,
-		CASE WHEN prd_nm_untrimmed > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info
+		CASE WHEN pk_duplicates > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN pk_duplicates > 0 THEN
+		'CRITCAL RULE "pk_duplicates" VIOLATED: Unable to load "' + @table_name + '".' ELSE NULL END AS err_detail 
+		FROM #dq_metrics_crm_prd_info
 		UNION ALL
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_cost', rows_checked, invalid_cost AS rows_failed,
-		CASE WHEN invalid_cost > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info
+		CASE WHEN invalid_cost > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN invalid_cost > 0 THEN 
+		'WARNING: invalid_cost detected.' ELSE NULL END AS err_detail
+		FROM #dq_metrics_crm_prd_info
 		UNION ALL
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_prd_line', rows_checked, invalid_prd_line AS rows_failed,
-		CASE WHEN invalid_prd_line > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info
+		CASE WHEN invalid_prd_line > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN invalid_prd_line > 0 THEN 
+		'INFO: invalid_prd_line detected.' ELSE NULL END AS err_detail
+		FROM #dq_metrics_crm_prd_info
 		UNION ALL
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_prd_start_dt', rows_checked, invalid_prd_start_dt AS rows_failed,
-		CASE WHEN invalid_prd_start_dt > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info
+		CASE WHEN invalid_prd_start_dt > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN invalid_prd_start_dt > 0 THEN 
+		'WARNING: invalid_prd_start_dt detected.' ELSE NULL END AS err_detail 
+		FROM #dq_metrics_crm_prd_info
 		UNION ALL
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_prd_end_dt', rows_checked, invalid_prd_end_dt AS rows_failed,
-		CASE WHEN invalid_prd_end_dt > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_prd_info;
-
-		-- Map values to variables
-		SELECT @pk_nulls = rows_failed FROM [audit].etl_data_quality
-		WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_nulls';
-
-		SELECT @pk_duplicates = rows_failed FROM [audit].etl_data_quality
-		WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_duplicates';
-
-		-- Update table etl_data_quality when PK contain NULLs
-		IF @pk_nulls > 0
-		BEGIN
-			UPDATE [audit].etl_data_quality
-				SET err_detail = 'Critical DQ Failure: pk_nulls'
-			WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_nulls';
-		END;
-
-		-- Update table etl_data_quality when PK exist as duplicates
-		IF @pk_duplicates > 0
-		BEGIN
-			UPDATE [audit].etl_data_quality
-				SET err_detail = 'Critical DQ Failure: pk_duplicates'
-			WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_duplicates';
-		END;
+		CASE WHEN invalid_prd_end_dt > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN invalid_prd_end_dt > 0 THEN 
+		'WARNING: invalid_prd_end_dt detected.' ELSE NULL END AS err_detail 
+		FROM #dq_metrics_crm_prd_info;
 
 		-- Controlled error handling when critical data quality rule is violated
-		IF @pk_nulls > 0 OR @pk_duplicates > 0
+		IF EXISTS
+		(
+			SELECT 1 FROM [audit].etl_data_quality dq INNER JOIN [audit].etl_data_quality_control dqc
+			ON dq.dq_layer = dqc.dq_layer AND dq.dq_table_name = dqc.dq_table_name AND dq.dq_check_name = dqc.dq_check_name
+			WHERE (dq.step_run_id = @step_run_id) AND (dq.dq_status = 'FAILED') AND (dqc.stop_on_failure = 1) AND (dqc.is_active = 1)
+		)
 		BEGIN
 			SET @end_time = GETDATE();
 			SET @step_duration = DATEDIFF(second, @start_time, @end_time);
@@ -274,7 +265,7 @@ BEGIN
 					rows_source = @rows_source,
 					rows_loaded = @rows_loaded,
 					rows_diff = @rows_diff,
-					err_message = 'Critical data quality rule violated. Check log table "etl_data_quality" to know which rule was violated.'
+					msg = 'Critical data quality rule violated. Check log table "etl_data_quality" to know which rule was violated.'
 				WHERE step_run_id = @step_run_id;
 
 			RETURN;
@@ -385,7 +376,7 @@ BEGIN
 			rows_source = @rows_source,
 			rows_loaded = @rows_loaded,
 			rows_diff = @rows_diff,
-			err_message = ERROR_MESSAGE()
+			msg = ERROR_MESSAGE()
 		WHERE step_run_id = @step_run_id;
 
 		-- Load error details into log table
