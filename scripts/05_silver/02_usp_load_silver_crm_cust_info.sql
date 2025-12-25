@@ -235,8 +235,7 @@ BEGIN
 		(
 			SELECT 1 FROM [audit].etl_data_quality dq INNER JOIN [audit].etl_data_quality_control dqc
 			ON dq.dq_layer = dqc.dq_layer AND dq.dq_table_name = dqc.dq_table_name AND dq.dq_check_name = dqc.dq_check_name
-			WHERE (dq.step_run_id = @step_run_id) AND (dq.dq_check_name = 'pk_nulls' OR dq.dq_check_name = 'pk_duplicates') 
-			AND (dq.dq_status = 'FAILED')
+			WHERE (dq.step_run_id = @step_run_id) AND (dq.dq_status = 'FAILED') AND (dqc.stop_on_failure = 1) AND (dqc.is_active = 1)
 		)
 		BEGIN
 			SET @end_time = GETDATE();
