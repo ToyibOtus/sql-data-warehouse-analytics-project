@@ -91,9 +91,9 @@ BEGIN
 			CONCAT_WS('|',
 			cid,
 			cntry) AS dwh_raw_row,
-			HASHBYTES('SHA2_256', CAST(CONCAT_WS('|',
-			cid,
-			cntry) AS VARBINARY(MAX))) AS dwh_row_hash
+			HASHBYTES('SHA2_256', CONCAT_WS('|',
+			COALESCE(CAST(cid AS VARBINARY(MAX)), '~'),
+			COALESCE(CAST(cntry AS VARBINARY(MAX)), '~'))) AS dwh_row_hash
 		FROM data_transformations
 		)
 		-- Retrieve newly transformed records and load into corresponding silver staging table
@@ -125,7 +125,7 @@ BEGIN
 		BEGIN
 			SET @end_time = GETDATE();
 			SET @step_duration = DATEDIFF(second, @start_time, @end_time);
-			SET @step_status = 'FAILED';
+			SET @step_status = 'NO OPERATION';
 			SET @rows_source = 0;
 			SET @rows_loaded = 0;
 			SET @rows_diff = 0;
@@ -138,7 +138,7 @@ BEGIN
 					rows_source = @rows_source,
 					rows_loaded = @rows_loaded,
 					rows_diff = @rows_diff,
-					err_message = 'No new records from source table "' + @source_path + '".'
+					msg = 'No new records from source table "' + @source_path + '".'
 				WHERE step_run_id = @step_run_id;
 
 			RETURN;
@@ -165,39 +165,26 @@ BEGIN
 			dq_check_name,
 			rows_checked,
 			rows_failed,
-			dq_status
+			dq_status,
+			err_detail
 		)
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'pk_nulls', rows_checked, pk_nulls AS rows_failed,
-		CASE WHEN pk_nulls > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_erp_loc_a101
+		CASE WHEN pk_nulls > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN pk_nulls > 0 THEN
+		'CRITICAL RULE "pk_nulls" VIOLATED: Unable to load "' + @table_name + '".' ELSE NULL END AS err_detail
+		FROM #dq_metrics_erp_loc_a101
 		UNION ALL
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'pk_duplicates', rows_checked, pk_duplicates AS rows_failed,
-		CASE WHEN pk_duplicates > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_erp_loc_a101;
-
-		-- Map values to variables
-		SELECT @pk_nulls = rows_failed FROM [audit].etl_data_quality
-		WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_nulls';
-
-		SELECT @pk_duplicates = rows_failed FROM [audit].etl_data_quality
-		WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_duplicates';
-
-		-- Update table etl_data_quality when PK contain NULLs
-		IF @pk_nulls > 0
-		BEGIN
-			UPDATE [audit].etl_data_quality
-				SET err_detail = 'Critical DQ Failure: pk_nulls'
-			WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_nulls';
-		END;
-
-		-- Update table etl_data_quality when PK exist as duplicates
-		IF @pk_duplicates > 0
-		BEGIN
-			UPDATE [audit].etl_data_quality
-				SET err_detail = 'Critical DQ Failure: pk_duplicates'
-			WHERE step_run_id = @step_run_id AND dq_check_name = 'pk_duplicates';
-		END;
+		CASE WHEN pk_duplicates > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN pk_duplicates > 0 THEN
+		'CRITICAL RULE "pk_duplicates" VIOLATED: Unable to load "' + @table_name + '".' ELSE NULL END AS err_detail 
+		FROM #dq_metrics_erp_loc_a101;
 
 		-- Controlled error handling when critical data quality rule is violated
-		IF @pk_nulls > 0 OR @pk_duplicates > 0
+		IF EXISTS
+		(
+			SELECT 1 FROM [audit].etl_data_quality dq INNER JOIN [audit].etl_data_quality_control dqc
+			ON dq.dq_layer = dqc.dq_layer AND dq.dq_table_name = dqc.dq_table_name AND dq.dq_check_name = dqc.dq_check_name
+			WHERE dq.step_run_id = @step_run_id AND dq.dq_status = 'FAILED' AND dqc.stop_on_failure = 1 AND dqc.is_active = 1
+		)
 		BEGIN
 			SET @end_time = GETDATE();
 			SET @step_duration = DATEDIFF(second, @start_time, @end_time);
@@ -214,7 +201,7 @@ BEGIN
 					rows_source = @rows_source,
 					rows_loaded = @rows_loaded,
 					rows_diff = @rows_diff,
-					err_message = 'Critical data quality rule violated. Check log table "etl_data_quality" to know which rule was violated.'
+					msg = 'Critical data quality rule violated. Check log table "etl_data_quality" to know which rule was violated.'
 				WHERE step_run_id = @step_run_id;
 
 			RETURN;
@@ -306,7 +293,7 @@ BEGIN
 			rows_source = @rows_source,
 			rows_loaded = @rows_loaded,
 			rows_diff = @rows_diff,
-			err_message = ERROR_MESSAGE()
+			msg = ERROR_MESSAGE()
 		WHERE step_run_id = @step_run_id;
 
 		-- Load error details into log table
