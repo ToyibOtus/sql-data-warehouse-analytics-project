@@ -112,7 +112,7 @@ BEGIN
 			step_run_duration_seconds = @step_duration,
 			step_run_status = @step_status,
 			rows_loaded = @rows_loaded,
-			err_message = ERROR_MESSAGE()
+			msg = ERROR_MESSAGE()
 		WHERE step_run_id = @step_run_id;
 
 		-- Insert error_details into log table
