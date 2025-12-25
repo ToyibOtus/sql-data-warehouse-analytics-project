@@ -35,6 +35,8 @@ BEGIN
 	@rows_loaded INT,
 	@rows_diff INT,
 	@source_path NVARCHAR(50) = 'bronze.crm_sales_details',
+	@sls_prd_key_nulls INT,
+	@sls_cust_id_nulls INT,
 	@invalid_sales INT,
 	@invalid_quantity INT,
 	@invalid_price INT;
@@ -74,7 +76,7 @@ BEGIN
 		WITH data_transformations AS
 		(
 		SELECT
-			sls_ord_num,
+			TRIM(sls_ord_num) AS sls_ord_num,
 			TRIM(sls_prd_key) AS sls_prd_key,
 			sls_cust_id,
 			CASE
@@ -126,15 +128,15 @@ BEGIN
 			sls_price) AS dwh_raw_row,
 			HASHBYTES('SHA2_256', 
 			CAST(CONCAT_WS('|',
-			sls_ord_num,
-			sls_prd_key,
-			sls_cust_id,
-			sls_order_dt,
-			sls_ship_dt,
-			sls_due_dt,
-			sls_sales,
-			sls_quantity,
-			sls_price) AS VARBINARY(MAX))) AS dwh_row_hash
+			COALESCE(CAST(sls_ord_num AS VARBINARY(MAX)), '~'),
+			COALESCE(CAST(sls_prd_key AS VARBINARY(MAX)), '~'),
+			COALESCE(CAST(sls_cust_id AS VARBINARY(MAX)), '~'),
+			COALESCE(CAST(sls_order_dt AS VARBINARY(MAX)), '~'),
+			COALESCE(CAST(sls_ship_dt AS VARBINARY(MAX)), '~'),
+			COALESCE(CAST(sls_due_dt AS VARBINARY(MAX)), '~'),
+			COALESCE(CAST(sls_sales AS VARBINARY(MAX)), '~'),
+			COALESCE(CAST(sls_quantity AS VARBINARY(MAX)), '~'),
+			COALESCE(CAST(sls_price AS VARBINARY(MAX)), '~')) AS VARBINARY(MAX))) AS dwh_row_hash
 		FROM data_transformations
 		)
 		-- Retrieve newly transformed records and load into corresponding silver staging table
@@ -181,7 +183,7 @@ BEGIN
 		BEGIN
 			SET @end_time = GETDATE();
 			SET @step_duration = DATEDIFF(second, @start_time, @end_time);
-			SET @step_status = 'FAILED';
+			SET @step_status = 'NO OPERATION';
 			SET @rows_source = 0;
 			SET @rows_loaded = 0;
 			SET @rows_diff = 0;
@@ -194,7 +196,7 @@ BEGIN
 					rows_source = @rows_source,
 					rows_loaded = @rows_loaded,
 					rows_diff = @rows_diff,
-					err_message = 'No new records from source table "' + @source_path + '".'
+					msg = 'No new records from source table "' + @source_path + '".'
 				WHERE step_run_id = @step_run_id;
 
 			RETURN;
@@ -206,16 +208,14 @@ BEGIN
 			COUNT(*) AS rows_checked,
 			SUM(CASE WHEN sls_ord_num != TRIM(sls_ord_num) THEN 1 ELSE 0 END) AS sls_ord_untrimmed,
 			SUM(CASE WHEN sls_prd_key != TRIM(sls_prd_key) THEN 1 ELSE 0 END) AS sls_prd_key_untrimmed,
-			(SELECT COUNT(*) FROM (SELECT sls_prd_key FROM silver_stg.crm_sales_details WHERE sls_prd_key NOT IN
-			(SELECT DISTINCT prd_key FROM silver.crm_prd_info))SUB) AS invalid_prd,
-			(SELECT COUNT(*) FROM (SELECT sls_cust_id FROM silver_stg.crm_sales_details WHERE sls_cust_id NOT IN
-			(SELECT DISTINCT sls_cust_id FROM silver.crm_cust_info))SUB) AS invalid_cust,
+			SUM(CASE WHEN sls_prd_key IS NULL THEN 1 ELSE 0 END) AS sls_prd_key_nulls,
+			SUM(CASE WHEN sls_cust_id IS NULL THEN 1 ELSE 0 END) AS sls_cust_id_nulls,
 			SUM(CASE WHEN sls_order_dt > sls_ship_dt OR sls_order_dt > sls_due_dt THEN 1 ELSE 0 END) AS invalid_order_dt,
 			SUM(CASE WHEN sls_ship_dt > sls_due_dt THEN 1 ELSE 0 END) AS invalid_ship_dt,
 			SUM(CASE WHEN sls_due_dt < sls_order_dt OR sls_due_dt < sls_ship_dt THEN 1 ELSE 0 END) AS invalid_due_dt,
 			SUM(CASE WHEN sls_sales IS NULL OR sls_sales <= 0 OR sls_sales != sls_price * sls_quantity THEN 1 ELSE 0 END) AS invalid_sales,
-			SUM(CASE WHEN sls_quantity IS NULL OR sls_quantity <= 0 OR sls_quantity != sls_sales/sls_price THEN 1 ELSE 0 END) AS invalid_quantity,
-			SUM(CASE WHEN sls_price IS NULL OR sls_price <= 0 OR sls_price != sls_sales/sls_quantity THEN 1 ELSE 0 END) AS invalid_price
+			SUM(CASE WHEN sls_quantity IS NULL OR sls_quantity <= 0 OR sls_quantity != sls_sales/NULLIF(sls_price, 0) THEN 1 ELSE 0 END) AS invalid_quantity,
+			SUM(CASE WHEN sls_price IS NULL OR sls_price <= 0 OR sls_price != sls_sales/NULLIF(sls_quantity, 0) THEN 1 ELSE 0 END) AS invalid_price
 			INTO #dq_metrics_crm_sales_details
 		FROM silver_stg.crm_sales_details;
 
@@ -229,75 +229,76 @@ BEGIN
 			dq_check_name,
 			rows_checked,
 			rows_failed,
-			dq_status
+			dq_status,
+			err_detail
 		)
-		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'sls_ord_untrimmed', rows_checked, sls_ord_untrimmed AS rows_failed,
-		CASE WHEN sls_ord_untrimmed > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_sales_details
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'sls_prd_key_nulls', rows_checked, sls_prd_key_nulls AS rows_failed,
+		CASE WHEN sls_prd_key_nulls > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN sls_prd_key_nulls > 0 THEN
+		'CRITICAL RULE "sls_prd_key_nulls" VIOLATED: Unable to load "' + @table_name + '".' ELSE NULL END AS err_detail
+		FROM #dq_metrics_crm_sales_details
 		UNION ALL
-		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'sls_prd_key_untrimmed', rows_checked, sls_prd_key_untrimmed AS rows_failed,
-		CASE WHEN sls_prd_key_untrimmed > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_sales_details
-		UNION ALL
-		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_prd', rows_checked, invalid_prd AS rows_failed,
-		CASE WHEN invalid_prd > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_sales_details
-		UNION ALL
-		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_cust', rows_checked, invalid_cust AS rows_failed,
-		CASE WHEN invalid_cust > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_sales_details
+		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'sls_cust_id_nulls', rows_checked, sls_cust_id_nulls AS rows_failed,
+		CASE WHEN sls_cust_id_nulls > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN sls_cust_id_nulls > 0 THEN
+		'CRITICAL RULE "sls_cust_id_nulls" VIOLATED: Unable to load "' + @table_name + '".' ELSE NULL END AS err_detail 
+		FROM #dq_metrics_crm_sales_details
 		UNION ALL
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_order_dt', rows_checked, invalid_order_dt AS rows_failed,
-		CASE WHEN invalid_order_dt > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_sales_details
+		CASE WHEN invalid_order_dt > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN invalid_order_dt > 0 THEN
+		'WARNING: invalid_order_dt detected' ELSE NULL END AS err_detail 
+		FROM #dq_metrics_crm_sales_details
 		UNION ALL
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_ship_dt', rows_checked, invalid_ship_dt AS rows_failed,
-		CASE WHEN invalid_ship_dt > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_sales_details
+		CASE WHEN invalid_ship_dt > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN invalid_ship_dt > 0 THEN
+		'WARNING: invalid_ship_dt detected' ELSE NULL END AS err_detail 
+		FROM #dq_metrics_crm_sales_details
 		UNION ALL
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_due_dt', rows_checked, invalid_due_dt AS rows_failed,
-		CASE WHEN invalid_due_dt > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_sales_details
+		CASE WHEN invalid_due_dt > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN invalid_due_dt > 0 THEN
+		'WARNING: invalid_due_dt detected' ELSE NULL END AS err_detail 
+		FROM #dq_metrics_crm_sales_details
 		UNION ALL
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_sales', rows_checked, invalid_sales AS rows_failed,
-		CASE WHEN invalid_sales > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_sales_details
+		CASE WHEN invalid_sales > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN invalid_sales > 0 THEN
+		'CRITICAL RULE "invalid_sales" VIOLATED: Unable to load "' + @table_name + '".' ELSE NULL END AS err_detail 
+		FROM #dq_metrics_crm_sales_details
 		UNION ALL
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_quantity', rows_checked, invalid_quantity AS rows_failed,
-		CASE WHEN invalid_quantity > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_sales_details
+		CASE WHEN invalid_quantity > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN invalid_quantity > 0 THEN
+		'CRITICAL RULE "invalid_quantity" VIOLATED: Unable to load "' + @table_name + '".' ELSE NULL END AS err_detail 
+		FROM #dq_metrics_crm_sales_details
 		UNION ALL
 		SELECT @job_run_id, @step_run_id, @layer, @table_name, 'invalid_price', rows_checked, invalid_price AS rows_failed,
-		CASE WHEN invalid_price > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status FROM #dq_metrics_crm_sales_details;
-
-		-- Map values to variables
-		SELECT @invalid_sales = rows_failed FROM [audit].etl_data_quality
-		WHERE step_run_id = @step_run_id AND dq_check_name = 'invalid_sales';
-
-		SELECT @invalid_quantity = rows_failed FROM [audit].etl_data_quality
-		WHERE step_run_id = @step_run_id AND dq_check_name = 'invalid_quantity';
-
-		SELECT @invalid_price = rows_failed FROM [audit].etl_data_quality
-		WHERE step_run_id = @step_run_id AND dq_check_name = 'invalid_price';
+		CASE WHEN invalid_price > 0 THEN 'FAILED' ELSE 'SUCCESS' END AS dq_status, CASE WHEN invalid_price > 0 THEN
+		'CRITICAL RULE "invalid_price" VIOLATED: Unable to load "' + @table_name + '".' ELSE NULL END AS err_detail 
+		FROM #dq_metrics_crm_sales_details;
 
 		-- Controlled error handling when critical data quality rule is violated
-		IF @invalid_sales > 0 OR @invalid_quantity > 0 OR @invalid_price > 0
+		IF EXISTS
+		(
+			SELECT 1 FROM [audit].etl_data_quality dq INNER JOIN [audit].etl_data_quality_control dqc
+			ON dq.dq_layer = dqc.dq_layer AND dq.dq_table_name = dqc.dq_table_name AND dq.dq_check_name = dqc.dq_check_name
+			WHERE dq.step_run_id = @step_run_id AND dq.dq_status = 'FAILED' AND dqc.stop_on_failure = 1 AND dqc.is_active = 1
+		)
 		BEGIN
-		SET @end_time = GETDATE();
-		SET @step_duration = DATEDIFF(second, @start_time, @end_time);
-		SET @step_status = 'FAILED';
-		IF @rows_source IS NULL SET @rows_source = 0;
-		SET @rows_loaded = 0;
-		SET @rows_diff = @rows_source - @rows_loaded;
+			SET @end_time = GETDATE();
+			SET @step_duration = DATEDIFF(second, @start_time, @end_time);
+			SET @step_status = 'FAILED';
+			IF @rows_source IS NULL SET @rows_source = 0;
+			SET @rows_loaded = 0;
+			SET @rows_diff = @rows_source - @rows_loaded;
 
-		UPDATE [audit].etl_data_quality
-			SET	err_detail = 'DQ Critical Rule Violated: Key business metric invalid'
-		WHERE (step_run_id = @step_run_id) 
-		AND (dq_check_name = 'invalid_sales' OR dq_check_name = 'invalid_quantity' OR dq_check_name = 'invalid_price')
+			UPDATE [audit].etl_step_run
+				SET
+					end_time = @end_time,
+					step_run_duration_seconds = @step_duration,
+					step_run_status = @step_status,
+					rows_source = @rows_source,
+					rows_loaded = @rows_loaded,
+					rows_diff = @rows_diff,
+					msg = 'Critical data quality rule violated. Check log table "etl_data_quality" to know which rule was violated.'
+				WHERE step_run_id = @step_run_id;
 
-		UPDATE [audit].etl_step_run
-			SET
-				end_time = @end_time,
-				step_run_duration_seconds = @step_duration,
-				step_run_status = @step_status,
-				rows_source = @rows_source,
-				rows_loaded = @rows_loaded,
-				rows_diff = @rows_diff,
-				err_message = 'Critical data quality rule violated. Check log table "etl_data_quality" to know which rule was violated.'
-			WHERE step_run_id = @step_run_id;
-
-		RETURN;
+			RETURN;
 		END;
 
 		-- Begin transaction
@@ -407,7 +408,7 @@ BEGIN
 			rows_source = @rows_source,
 			rows_loaded = @rows_loaded,
 			rows_diff = @rows_diff,
-			err_message = ERROR_MESSAGE()
+			msg = ERROR_MESSAGE()
 		WHERE step_run_id = @step_run_id;
 
 		-- Load error details into log table
