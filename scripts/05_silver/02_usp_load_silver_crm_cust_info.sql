@@ -38,8 +38,6 @@ BEGIN
 	@pk_nulls INT,
 	@pk_duplicates INT;
 
-	DECLARE @merge_stats TABLE (merge_action NVARCHAR(50));
-
 	-- Capture start_time
 	SET @start_time = GETDATE();
 
@@ -124,14 +122,14 @@ BEGIN
 				cst_marital_status,
 				cst_gndr,
 				cst_create_date) AS dwh_raw_row,
-				HASHBYTES('SHA2_256', CAST(CONCAT_WS('|',
-				COALESCE(cst_id, '~'),
-				COALESCE(cst_key, '~'),
-				COALESCE(cst_first_name, '~'),
-				COALESCE(cst_last_name, '~'),
-				COALESCE(cst_marital_status, '~'),
-				COALESCE(cst_gndr, '~'),
-				COALESCE(cst_create_date, '~')) AS VARBINARY(MAX))) AS dwh_row_hash
+				HASHBYTES('SHA2_256', CONCAT_WS('|',
+				COALESCE(CAST(cst_id AS VARBINARY(MAX)), '~'),
+				COALESCE(CAST(cst_key AS VARBINARY(MAX)), '~'),
+				COALESCE(CAST(cst_first_name AS VARBINARY(MAX)), '~'),
+				COALESCE(CAST(cst_last_name AS VARBINARY(MAX)), '~'),
+				COALESCE(CAST(cst_marital_status AS VARBINARY(MAX)), '~'),
+				COALESCE(CAST(cst_gndr AS VARBINARY(MAX)), '~'),
+				COALESCE(CAST(cst_create_date AS VARBINARY(MAX)), '~'))) AS dwh_row_hash
 			FROM data_transformations
 		)
 		-- Retrieve newly transformed records and load into corresponding silver staging table
