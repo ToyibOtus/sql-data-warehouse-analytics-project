@@ -3,12 +3,12 @@
 Stored Procedure: Load Gold Table (Silver -> Gold)
 ===========================================================================================================
 Script Purpose:
-	This script loads gold table [dim_customers]. It combines related business domain, and also performs 
+	This script loads gold table [dim_products]. It combines related business domain, and also performs 
 	logging operations, by inserting vital logging details into log tables [etl_step_run] & [etl_error_log].
 
 Parameter: @job_run_id UNIQUEIDENTIFIER = NULL
 
-Usage: EXEC gold.usp_load_gold_dim_customers;
+Usage: EXEC gold.usp_load_gold_dim_products;
 
 Note:
 	* Running this script independently, return NULL to job_run_id (parameter) in log tables.
@@ -16,7 +16,7 @@ Note:
 	  within the same ETL run, and thus allowing for easy traceability & debugging.
 ===========================================================================================================
 */
-CREATE OR ALTER PROCEDURE gold.usp_load_gold_dim_customers @job_run_id UNIQUEIDENTIFIER = NULL AS
+CREATE OR ALTER PROCEDURE gold.usp_load_gold_dim_products @job_run_id UNIQUEIDENTIFIER = NULL AS
 BEGIN
 	-- Abort transaction on severe error
 	SET XACT_ABORT ON;
@@ -25,8 +25,8 @@ BEGIN
 	DECLARE
 	@step_run_id UNIQUEIDENTIFIER = NEWID(),
 	@layer NVARCHAR(50) = 'gold',
-	@table_name NVARCHAR(50) = 'dim_customers',
-	@step_name NVARCHAR(50) = 'usp_load_gold_dim_customers',
+	@table_name NVARCHAR(50) = 'dim_products',
+	@step_name NVARCHAR(50) = 'usp_load_gold_dim_products',
 	@start_time DATETIME,
 	@end_time DATETIME,
 	@step_duration INT,
@@ -34,7 +34,7 @@ BEGIN
 	@rows_source INT,
 	@rows_loaded INT,
 	@rows_diff INT,
-	@source_path NVARCHAR(1000) = 'silver.crm_cust_info + silver.erp_cust_az12 + silver.erp_loc_a101';
+	@source_path NVARCHAR(1000) = 'silver.crm_prd_info + silver.erp_px_cat_g1v2';
 
 	-- Capture start time
 	SET @start_time = GETDATE();
@@ -64,90 +64,91 @@ BEGIN
 	);
 
 	BEGIN TRY
-		-- Drop temp table #dim_customers if exists
-		DROP TABLE IF EXISTS #dim_customers;
+		-- Drop temp table #dim_products if exists
+		DROP TABLE IF EXISTS #dim_products;
 
 		-- Perform data_integration
 		WITH data_integration AS
 		(
-		SELECT 
-			ci.cst_id AS customer_id,
-			ci.cst_key AS customer_number,
-			ci.cst_first_name AS first_name,
-			ci.cst_last_name AS last_name,
-			la.cntry AS country,
-			CASE 
-				WHEN ci.cst_gndr = 'Unknown' AND ca.gen IS NOT NULL THEN ca.gen
-				ELSE ci.cst_gndr
-			END AS gender,
-			ci.cst_marital_status AS marital_status,
-			ca.bdate AS birth_date,
-			ci.cst_create_date AS create_date
-		FROM silver.crm_cust_info ci
-		LEFT JOIN silver.erp_cust_az12 ca
-		ON ci.cst_key = ca.cid
-		LEFT JOIN silver.erp_loc_a101 la
-		ON ci.cst_key = la.cid
+		SELECT
+			cpi.prd_id AS product_id,
+			cpi.prd_key AS product_number,
+			cpi.prd_nm AS product_name,
+			cpi.prd_line AS product_line,
+			cpi.cat_id AS category_id,
+			pcg.cat AS category,
+			pcg.subcat AS subcategory,
+			pcg.maintenance,
+			cpi.prd_cost AS product_cost,
+			cpi.prd_start_dt AS product_start_date
+		FROM silver.crm_prd_info cpi
+		LEFT JOIN silver.erp_px_cat_g1v2 pcg
+		ON cpi.cat_id = pcg.id
+		WHERE prd_end_dt IS NULL
 		)
 		-- Generate meatadata columns
 		, metadata_columns AS
 		(
 		SELECT
-			customer_id,
-			customer_number,
-			first_name,
-			last_name,
-			country,
-			gender,
-			marital_status,
-			birth_date,
-			create_date,
+			product_id,
+			product_number,
+			product_name,
+			product_line,
+			category_id,
+			category,
+			subcategory,
+			maintenance,
+			product_cost,
+			product_start_date,
 			@step_run_id AS dwh_step_run_id,
 			CONCAT_WS('|', 
-			customer_id,
-			customer_number,
-			first_name,
-			last_name,
-			country,
-			gender,
-			marital_status,
-			birth_date,
-			create_date) AS dwh_raw_row,
-			HASHBYTES('SHA2_256', CONCAT_WS('|', 
-			COALESCE(CAST(customer_id AS VARBINARY(64)), '~'),
-			COALESCE(CAST(customer_number AS VARBINARY(64)), '~'),
-			COALESCE(CAST(first_name AS VARBINARY(64)), '~'),
-			COALESCE(CAST(last_name AS VARBINARY(64)), '~'),
-			COALESCE(CAST(country AS VARBINARY(64)), '~'),
-			COALESCE(CAST(gender AS VARBINARY(64)), '~'),
-			COALESCE(CAST(marital_status AS VARBINARY(64)), '~'),
-			COALESCE(CAST(birth_date AS VARBINARY(64)), '~'),
-			COALESCE(CAST(create_date AS VARBINARY(64)), '~'))) AS dwh_row_hash
+			product_id,
+			product_number,
+			product_name,
+			product_line,
+			category_id,
+			category,
+			subcategory,
+			maintenance,
+			product_cost,
+			product_start_date) AS dwh_raw_row,
+			HASHBYTES('SHA2_256', CONCAT_WS('|',
+			COALESCE(CAST(product_id AS VARBINARY(64)), '~'),
+			COALESCE(CAST(product_number AS VARBINARY(64)), '~'),
+			COALESCE(CAST(product_name AS VARBINARY(64)), '~'),
+			COALESCE(CAST(product_line AS VARBINARY(64)), '~'),
+			COALESCE(CAST(category_id AS VARBINARY(64)), '~'),
+			COALESCE(CAST(category AS VARBINARY(64)), '~'),
+			COALESCE(CAST(subcategory AS VARBINARY(64)), '~'),
+			COALESCE(CAST(maintenance AS VARBINARY(64)), '~'),
+			COALESCE(CAST(product_cost AS VARBINARY(64)), '~'),
+			COALESCE(CAST(product_start_date AS VARBINARY(64)), '~'))) AS dwh_row_hash
 		FROM data_integration
 		)
 		-- Load into temp table
 		SELECT
-			mc.customer_id,
-			mc.customer_number,
-			mc.first_name,
-			mc.last_name,
-			mc.country,
-			mc.gender,
-			mc.marital_status,
-			mc.birth_date,
-			mc.create_date,
+			mc.product_id,
+			mc.product_number,
+			mc.product_name,
+			mc.product_line,
+			mc.category_id,
+			mc.category,
+			mc.subcategory,
+			mc.maintenance,
+			mc.product_cost,
+			mc.product_start_date,
 			mc.dwh_step_run_id,
 			mc.dwh_raw_row,
 			mc.dwh_row_hash
-			INTO #dim_customers
+			INTO #dim_products
 		FROM metadata_columns mc
-		LEFT JOIN gold.dim_customers dc
-		ON mc.customer_id = dc.customer_id 
-		AND mc.dwh_row_hash = dc.dwh_row_hash
-		WHERE dc.dwh_row_hash IS NULL;
+		LEFT JOIN gold.dim_products dp
+		ON mc.product_id = dp.product_id
+		AND mc.dwh_row_hash = dp.dwh_row_hash
+		WHERE dp.dwh_row_hash IS NULL;
 
 		-- Retrieve count of rows from temp table
-		SELECT @rows_source = COUNT(*) FROM #dim_customers;
+		SELECT @rows_source = COUNT(*) FROM #dim_products;
 
 		-- Stop transaction if total row count equals Nulls or zero
 		IF @rows_source IS NULL OR @rows_source = 0
@@ -177,59 +178,61 @@ BEGIN
 		BEGIN TRAN;
 
 		-- Merge tables
-		MERGE gold.dim_customers tgt
-		USING #dim_customers src
-			ON tgt.customer_id = src.customer_id
+		MERGE gold.dim_products tgt
+		USING #dim_products src
+			ON tgt.product_id = src.product_id
 
 		-- Update outdated records
 		WHEN MATCHED 
 			AND tgt.dwh_row_hash != src.dwh_row_hash THEN
 		UPDATE SET
-				tgt.customer_number = src.customer_number,
-				tgt.first_name = src.first_name,
-				tgt.last_name = src.last_name,
-				tgt.country = src.country,
-				tgt.gender = src.gender,
-				tgt.marital_status = src.marital_status,
-				tgt.birth_date = src.birth_date,
-				tgt.create_date = src.create_date,
-				tgt.dwh_step_run_id = src.dwh_step_run_id,
-				tgt.dwh_raw_row = src.dwh_raw_row,
-				tgt.dwh_row_hash = src.dwh_row_hash
+			tgt.product_number = src.product_number,
+			tgt.product_name = src.product_name,
+			tgt.product_line = src.product_line,
+			tgt.category_id = src.category_id,
+			tgt.category = src.category,
+			tgt.subcategory = src.subcategory,
+			tgt.maintenance = src.maintenance,
+			tgt.product_cost = src.product_cost,
+			tgt.product_start_date = src.product_start_date,
+			tgt.dwh_step_run_id = src.dwh_step_run_id,
+			tgt.dwh_raw_row = src.dwh_raw_row,
+			tgt.dwh_row_hash = src.dwh_row_hash
 
 		-- Load new records
 		WHEN NOT MATCHED BY TARGET THEN
 			INSERT
 			(
-				customer_id,
-				customer_number,
-				first_name,
-				last_name,
-				country,
-				gender,
-				marital_status,
-				birth_date,
-				create_date,
+				product_id,
+				product_number,
+				product_name,
+				product_line,
+				category_id,
+				category,
+				subcategory,
+				maintenance,
+				product_cost,
+				product_start_date,
 				dwh_step_run_id,
 				dwh_raw_row,
 				dwh_row_hash
 			)
 			VALUES
 			(
-				src.customer_id,
-				src.customer_number,
-				src.first_name,
-				src.last_name,
-				src.country,
-				src.gender,
-				src.marital_status,
-				src.birth_date,
-				src.create_date,
+				src.product_id,
+				src.product_number,
+				src.product_name,
+				src.product_line,
+				src.category_id,
+				src.category,
+				src.subcategory,
+				src.maintenance,
+				src.product_cost,
+				src.product_start_date,
 				src.dwh_step_run_id,
 				src.dwh_raw_row,
-				src.dwh_row_hash
+				src.dwh_row_hash	
 			);
-
 		-- Retrive rows loaded
 		SET @rows_loaded = @@ROWCOUNT;
 
