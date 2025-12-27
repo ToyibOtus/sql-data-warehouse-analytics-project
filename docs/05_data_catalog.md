@@ -11,7 +11,7 @@ These tables contain key business metrics that supports analysis, and thus enabl
 
 ---
 
-### 1. gold.dim_customers
+### 1. gold.vw_dim_customers
 * **Purpose:** Stores customer details, enriched with demographics and geographics data
 * **Columns:**
 
@@ -30,7 +30,7 @@ These tables contain key business metrics that supports analysis, and thus enabl
 
 ---
 
-### 2. gold_dim_products
+### 2. gold.vw_dim_products
 * **Purpose:** Provides detailed information about the products and their attributes
 * **Columns:**
 
@@ -46,11 +46,11 @@ These tables contain key business metrics that supports analysis, and thus enabl
 |maintenance         |NVARCHAR(50)         |Indicates whether the product requires maintenance or not (e.g., 'Yes', 'No').|
 |cost                |INT                  |The cost or base price of the product measured in monetary units.|
 |product_line        |NVARCHAR(50)         |The specific product line or series to which the product belongs (e.g., 'Road', 'Mountain').|
-|start_date          |DATE                 |The date the product became available for sale|
+|product_start_date  |DATE                 |The date the product became available for sale|
 
 ---
 
-### 3. gold.fact_sales
+### 3. gold.vw_fact_sales
 * **Purpose:** Stores transactional sales data for analytical purposes
 * **Columns:**
 
@@ -60,15 +60,15 @@ These tables contain key business metrics that supports analysis, and thus enabl
 |product_key         |INT                  |Surrogate key, linking **fact_sales** to **dim_products**.|
 |customer_key        |INT                  |Surrogate key, linking **fact_sales** to **dim_customers**.| 
 |order_date          |DATE                 |The date an order was placed.|
-|ship_date           |DATE                 |The date the product was shipped.|
+|shipping_date       |DATE                 |The date the product was shipped.|
 |due_date            |DATE                 |The date the product is expected to be delivered.|
-|sales_amount        |INT                  |The total monetary value of the sale for the line item, in whole currency units (e.g., 25).|
+|sales               |INT                  |The total monetary value of the sale for the line item, in whole currency units (e.g., 25).|
 |quantity            |INT                  |The number of units of the product ordered for the line item (e.g., 1).|
 |price               |INT                  |The price per unit of the product for the line item, in whole currency units (e.g., 25).|
 
 ---
 
-### 4. gold.report_customers
+### 4. gold.vw_report_customers
 * **Purpose:** Holds data prepared for visualization (BI tools)
 * **Columns:**
 
@@ -95,7 +95,7 @@ These tables contain key business metrics that supports analysis, and thus enabl
 |avg_order_value     |INT                  |The value of one order made by a customer (total_sales/total_orders).
 |avg_monthly_spend   |INT                  |The average monthly spend (total_sales/lifespan_month).
 
-### 5. gold.report_products
+### 5. gold.vw_report_products
 * **Purpose:** Holds data prepared for visualization (BI tools)
 * **Columns:**
 
