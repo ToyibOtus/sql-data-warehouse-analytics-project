@@ -92,8 +92,8 @@ BEGIN
 			cid,
 			cntry) AS dwh_raw_row,
 			HASHBYTES('SHA2_256', CONCAT_WS('|',
-			COALESCE(CAST(cid AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(cntry AS VARBINARY(MAX)), '~'))) AS dwh_row_hash
+			COALESCE(CAST(cid AS VARBINARY(64)), '~'),
+			COALESCE(CAST(cntry AS VARBINARY(64)), '~'))) AS dwh_row_hash
 		FROM data_transformations
 		)
 		-- Retrieve newly transformed records and load into corresponding silver staging table
@@ -125,7 +125,7 @@ BEGIN
 		BEGIN
 			SET @end_time = GETDATE();
 			SET @step_duration = DATEDIFF(second, @start_time, @end_time);
-			SET @step_status = 'NO OPERATION';
+			SET @step_status = 'FAILED';
 			SET @rows_source = 0;
 			SET @rows_loaded = 0;
 			SET @rows_diff = 0;
