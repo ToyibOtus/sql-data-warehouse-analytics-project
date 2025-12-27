@@ -68,13 +68,14 @@ These provide key metrics to support strategic decision-making and business grow
 ---
 
 ## Data Architecture
-The data architecture follows the Medalion Architecture **Bronze**, **Silver**, and **Gold** layers:
+The data architecture follows the Medallion Architecture **Bronze**, **Silver**, and **Gold** layers, with an additional **landing** layer.:
 
 ![data_architecture.png](docs/01_data_architecture.png)
 
-1. **Bronze Layer**: Stores raw data as-is from the source system, enabling traceability and debugging.
-2. **Silver Layer**: Stores cleaned, prepared, and transformed data. It is designed to support analysis.
-3. **Gold Layer**: Houses business-ready data modeled into a star schema, supporting reporting and analytics.
+1. **Landing Layer**: Stores raw data as-is from the source. Designed specifically to feed the bronze layer.
+2. **Bronze Layer**: Stores raw data as-is from the landing layer. Additionally, it stores ingestion metadata, and thus enabling traceability and debugging.
+3. **Silver Layer**: Stores cleaned, prepared, and transformed data. It is designed to support analysis.
+4. **Gold Layer**: Houses business-ready data modeled into a star schema, supporting reporting and analytics.
 
 ---
 
