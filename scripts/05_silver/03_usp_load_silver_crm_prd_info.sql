@@ -113,14 +113,14 @@ BEGIN
 			prd_start_dt,
 			prd_end_dt) AS dwh_raw_row,
 			HASHBYTES('SHA2_256', CONCAT_WS('|',
-			COALESCE(CAST(prd_id AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(cat_id AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(prd_key AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(prd_nm AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(prd_cost AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(prd_line AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(prd_start_dt AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(prd_end_dt AS VARBINARY(MAX)), '~'))) AS dwh_row_hash
+			COALESCE(CAST(prd_id AS VARBINARY(64)), '~'),
+			COALESCE(CAST(cat_id AS VARBINARY(64)), '~'),
+			COALESCE(CAST(prd_key AS VARBINARY(64)), '~'),
+			COALESCE(CAST(prd_nm AS VARBINARY(64)), '~'),
+			COALESCE(CAST(prd_cost AS VARBINARY(64)), '~'),
+			COALESCE(CAST(prd_line AS VARBINARY(64)), '~'),
+			COALESCE(CAST(prd_start_dt AS VARBINARY(64)), '~'),
+			COALESCE(CAST(prd_end_dt AS VARBINARY(64)), '~'))) AS dwh_row_hash
 		FROM data_transformations
 		)
 		-- Retrieve newly transformed records and load into corresponding silver staging table
