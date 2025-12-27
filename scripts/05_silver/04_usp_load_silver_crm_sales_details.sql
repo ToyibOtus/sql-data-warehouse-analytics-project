@@ -128,15 +128,15 @@ BEGIN
 			sls_price) AS dwh_raw_row,
 			HASHBYTES('SHA2_256', 
 			CAST(CONCAT_WS('|',
-			COALESCE(CAST(sls_ord_num AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(sls_prd_key AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(sls_cust_id AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(sls_order_dt AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(sls_ship_dt AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(sls_due_dt AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(sls_sales AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(sls_quantity AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(sls_price AS VARBINARY(MAX)), '~')) AS VARBINARY(MAX))) AS dwh_row_hash
+			COALESCE(CAST(sls_ord_num AS VARBINARY(64)), '~'),
+			COALESCE(CAST(sls_prd_key AS VARBINARY(64)), '~'),
+			COALESCE(CAST(sls_cust_id AS VARBINARY(64)), '~'),
+			COALESCE(CAST(sls_order_dt AS VARBINARY(64)), '~'),
+			COALESCE(CAST(sls_ship_dt AS VARBINARY(64)), '~'),
+			COALESCE(CAST(sls_due_dt AS VARBINARY(64)), '~'),
+			COALESCE(CAST(sls_sales AS VARBINARY(64)), '~'),
+			COALESCE(CAST(sls_quantity AS VARBINARY(64)), '~'),
+			COALESCE(CAST(sls_price AS VARBINARY(64)), '~')) AS VARBINARY(MAX))) AS dwh_row_hash
 		FROM data_transformations
 		)
 		-- Retrieve newly transformed records and load into corresponding silver staging table
