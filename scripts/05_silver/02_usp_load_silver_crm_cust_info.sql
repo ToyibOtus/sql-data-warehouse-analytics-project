@@ -123,13 +123,13 @@ BEGIN
 				cst_gndr,
 				cst_create_date) AS dwh_raw_row,
 				HASHBYTES('SHA2_256', CONCAT_WS('|',
-				COALESCE(CAST(cst_id AS VARBINARY(MAX)), '~'),
-				COALESCE(CAST(cst_key AS VARBINARY(MAX)), '~'),
-				COALESCE(CAST(cst_first_name AS VARBINARY(MAX)), '~'),
-				COALESCE(CAST(cst_last_name AS VARBINARY(MAX)), '~'),
-				COALESCE(CAST(cst_marital_status AS VARBINARY(MAX)), '~'),
-				COALESCE(CAST(cst_gndr AS VARBINARY(MAX)), '~'),
-				COALESCE(CAST(cst_create_date AS VARBINARY(MAX)), '~'))) AS dwh_row_hash
+				COALESCE(CAST(cst_id AS VARBINARY(64)), '~'),
+				COALESCE(CAST(cst_key AS VARBINARY(64)), '~'),
+				COALESCE(CAST(cst_first_name AS VARBINARY(64)), '~'),
+				COALESCE(CAST(cst_last_name AS VARBINARY(64)), '~'),
+				COALESCE(CAST(cst_marital_status AS VARBINARY(64)), '~'),
+				COALESCE(CAST(cst_gndr AS VARBINARY(64)), '~'),
+				COALESCE(CAST(cst_create_date AS VARBINARY(64)), '~'))) AS dwh_row_hash
 			FROM data_transformations
 		)
 		-- Retrieve newly transformed records and load into corresponding silver staging table
