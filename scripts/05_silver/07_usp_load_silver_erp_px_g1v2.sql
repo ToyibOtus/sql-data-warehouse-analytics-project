@@ -93,10 +93,10 @@ BEGIN
 			subcat,
 			maintenance) AS dwh_raw_row,
 			HASHBYTES('SHA2_256', CONCAT_WS('|',
-			COALESCE(CAST(id AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(cat AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(subcat AS VARBINARY(MAX)), '~'),
-			COALESCE(CAST(maintenance AS VARBINARY(MAX)), '~'))) AS dwh_row_hash
+			COALESCE(CAST(id AS VARBINARY(64)), '~'),
+			COALESCE(CAST(cat AS VARBINARY(64)), '~'),
+			COALESCE(CAST(subcat AS VARBINARY(64)), '~'),
+			COALESCE(CAST(maintenance AS VARBINARY(64)), '~'))) AS dwh_row_hash
 		FROM data_transformations
 		)
 		-- Retrieve newly transformed records and load into corresponding silver staging table
