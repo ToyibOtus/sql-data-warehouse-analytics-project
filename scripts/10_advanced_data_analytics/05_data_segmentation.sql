@@ -47,7 +47,7 @@ SELECT
 	dc.last_name,
 	MIN(fs.order_date) AS first_order_date,
 	MAX(fs.order_date) AS last_order_date,
-	DATEDIFF(month, MIN(fs.order_date), MAX(fs.order_date)) AS lifespan,
+	DATEDIFF(month, MIN(fs.order_date), MAX(fs.order_date)) AS lifespan_month,
 	SUM(fs.sales) AS total_sales
 FROM gold.vw_fact_sales fs
 LEFT JOIN gold.vw_dim_customers dc
@@ -62,11 +62,11 @@ GROUP BY
 SELECT
 	first_name,
 	last_name,
-	lifespan,
+	lifespan_month,
 	total_sales,
 	CASE	
-		WHEN lifespan >= 12 AND total_sales > 5000 THEN 'VIP'
-		WHEN lifespan >= 12 AND total_sales <= 5000 THEN 'Regular'
+		WHEN lifespan_month >= 12 AND total_sales > 5000 THEN 'VIP'
+		WHEN lifespan_month >= 12 AND total_sales <= 5000 THEN 'Regular'
 		ELSE 'New'
 	END AS customer_status
 FROM monthly_history
@@ -84,7 +84,7 @@ WITH monthly_history AS
 SELECT
 	dp.product_key,
 	dp.product_name,
-	DATEDIFF(month, MIN(fs.order_date), MAX(fs.order_date)) AS lifespan,
+	DATEDIFF(month, MIN(fs.order_date), MAX(fs.order_date)) AS lifespan_month,
 	SUM(fs.sales) AS total_sales
 FROM gold.vw_fact_sales fs
 LEFT JOIN gold.vw_dim_products dp
@@ -98,11 +98,11 @@ GROUP BY
 SELECT
 	product_key,
 	product_name,
-	lifespan,
+	lifespan_month,
 	total_sales,
 	CASE	
-		WHEN lifespan >= 12 AND total_sales > 5000 THEN 'High Performer'
-		WHEN lifespan >= 12 AND total_sales <= 5000 THEN 'Mid Performer'
+		WHEN lifespan_month >= 12 AND total_sales > 5000 THEN 'High Performer'
+		WHEN lifespan_month >= 12 AND total_sales <= 5000 THEN 'Mid Performer'
 		ELSE 'Low Performer'
 	END AS product_status
 FROM monthly_history
