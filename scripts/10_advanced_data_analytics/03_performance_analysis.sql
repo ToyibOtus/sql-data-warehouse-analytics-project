@@ -42,7 +42,7 @@ FROM
 		FROM gold.vw_fact_sales fs
 		LEFT JOIN gold.vw_dim_products dp
 		ON fs.product_key = dp.product_key
-		WHERE YEAR(fs.order_date) IS NOT NULL
+		WHERE fs.order_date IS NOT NULL
 		GROUP BY 
 			YEAR(fs.order_date),
 			dp.product_key,
@@ -87,7 +87,7 @@ FROM
 		FROM gold.vw_fact_sales fs
 		LEFT JOIN gold.vw_dim_products dp
 		ON fs.product_key = dp.product_key
-		WHERE YEAR(fs.order_date) IS NOT NULL
+		WHERE fs.order_date IS NOT NULL
 		GROUP BY 
 			YEAR(fs.order_date),
 			dp.product_key,
@@ -114,7 +114,7 @@ FROM
 			YEAR(order_date) AS order_date_year,
 			SUM(sales) AS total_sales
 		FROM gold.vw_fact_sales
-		WHERE YEAR(order_date) IS NOT NULL
+		WHERE order_date IS NOT NULL
 		GROUP BY YEAR(order_date)
 	)SUB1
 )SUB2;
@@ -139,7 +139,7 @@ FROM
 			DATETRUNC(month, order_date) AS order_date_month,
 			SUM(sales) AS total_sales
 		FROM gold.vw_fact_sales
-		WHERE YEAR(order_date) IS NOT NULL
+		WHERE order_date IS NOT NULL
 		GROUP BY DATETRUNC(month, order_date)
 	)SUB1
 )SUB2;
@@ -157,7 +157,7 @@ SELECT
 	YEAR(order_date) AS order_date_year,
 	SUM(sales) AS total_sales
 FROM gold.vw_fact_sales
-WHERE YEAR(order_date) IS NOT NULL
+WHERE order_date IS NOT NULL
 GROUP BY YEAR(order_date)
 )SUB
 ORDER BY order_date_year;
@@ -176,6 +176,6 @@ SELECT
 	DATETRUNC(month, order_date) AS order_date_month,
 	SUM(sales) AS total_sales
 FROM gold.vw_fact_sales
-WHERE YEAR(order_date) IS NOT NULL
+WHERE order_date IS NOT NULL
 GROUP BY DATETRUNC(month, order_date)
 )SUB;
