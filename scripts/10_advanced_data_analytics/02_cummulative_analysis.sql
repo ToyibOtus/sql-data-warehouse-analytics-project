@@ -24,7 +24,7 @@ SELECT
 	SUM(quantity) AS total_quantity,
 	SUM(sales) AS total_sales
 FROM gold.vw_fact_sales
-WHERE YEAR(order_date) IS NOT NULL
+WHERE order_date IS NOT NULL
 GROUP BY YEAR(order_date)
 )SUB;
 
@@ -45,6 +45,6 @@ SELECT
 	SUM(quantity) AS total_quantity,
 	SUM(sales) AS total_sales
 FROM gold.vw_fact_sales
-WHERE YEAR(order_date) IS NOT NULL
+WHERE order_date IS NOT NULL
 GROUP BY DATETRUNC(month, order_date)
 )SUB;
