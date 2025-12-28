@@ -75,6 +75,7 @@ These tables contain key business metrics that supports analysis, and thus enabl
 |   **Column Name**  |   **Data Type**     |   **Description**                                                                         |
 |--------------------|---------------------|-------------------------------------------------------------------------------------------|
 |customer_key        |INT                  |A surrogate key unquely identifying each customer record in the report.
+|customer_id          |INT                 |Unique numerical identifier assigned to each customer.|
 |customer_number     |NVARCHAR(50)         |An alphanumerical unique identifier representing each customer, used for tracking and referencing.
 |customer_name       |NVARCHAR(101)        |The customer's fullname recorded in the system.
 |country             |NVARCHAR(50)         |The customer's country (e.g., 'Australia').
@@ -83,15 +84,16 @@ These tables contain key business metrics that supports analysis, and thus enabl
 |birth_date          |DATE                 |The birth date of each customer (e.g., '1971-10-06').
 |age                 |INT                  |The customer's age (e.g., '54').
 |age_group           |VARCHAR(8)           |The customer's age group (e.g., 'Below 20', '20-29', '30-39').
+|customer_status     |VARCHAR(7)           |The status of each customer, representing both value and loyalty (e.g., 'VIP', 'Regular', & 'New').
+|create_date          |DATE                |The date the customer record was created in the system (e.g., '2025-10-06').|
 |first_order_date    |DATE                 |The customer's first order date (e.g., '2011-01-19').
 |last_order_date     |DATE                 |The customer's last order date (e.g., '2013-05-03').
-|recency_month       |INT                  |The number of months since last order (e.g., '150').
-|customer_status     |VARCHAR(7)           |The status of each customer, representing both value and loyalty (e.g., 'VIP', 'Regular', & 'New'). 
+|lifespan_month      |INT                  |The months of history each customer has with the organization. 
 |total_orders        |INT                  |The total number of orders made by each customer.
 |total_quantity      |INT                  |The total quantity of products purchased by each customer.
-|total_products      |INT                  |The unique number of products purchased by each customer.
 |total_sales         |INT                  |The total amount of revenue each customer has generated.
-|lifespan_month      |INT                  |The months of history each customer has with the organization.
+|total_products      |INT                  |The unique number of products purchased by each customer.
+|recency_month       |INT                  |The number of months since last order (e.g., '150').
 |avg_order_value     |INT                  |The value of one order made by a customer (total_sales/total_orders).
 |avg_monthly_spend   |INT                  |The average monthly spend (total_sales/lifespan_month).
 
@@ -102,6 +104,7 @@ These tables contain key business metrics that supports analysis, and thus enabl
 |   **Column Name**  |   **Data Type**     |   **Description**                                                                         |
 |--------------------|---------------------|-------------------------------------------------------------------------------------------|
 |product_key         |INT                  |A surrogate key uniquely identifying each record in the report.
+|product_id          |INT                  |Unique numerical identifier assigned to each product.|
 |product_number      |NVARCHAR(50)         |An alphanumerical unique identifier assigned to each product, used for tracking and referencing
 |product_name        |NVARCHAR(50)         |The product name recorded in the system (e.g., 'Road-150 Red- 62'). 
 |product_line        |NVARCHAR(50)         |The product line each product falls into (e.g., 'Mountain', 'Road', 'Other Sales', and 'Touring').
@@ -111,14 +114,15 @@ These tables contain key business metrics that supports analysis, and thus enabl
 |maintenance         |NVARCHAR(50)         |Indicates whether the product requires maintenance or not (e.g., 'Yes', 'No').
 |product_cost        |INT                  |The cost or base price of the product measured in monetary units.
 |avg_selling_price   |INT                  |The average selling price of each product.
+|product_status      |VARCHAR(14)          |The status of each product (e.g., 'High Performer', 'Mid Range', 'Low Performer').
+|product_start_date  |DATE                 |The date the product became available for sale|
 |last_order_date     |DATE                 |The order date each product was last ordered.
-|recency_month       |INT                  |The number of months since each product was last ordered.
+|lifespan_month      |INT                  |The months of history each product has with the organization.
 |total_orders        |INT                  |The total number of times a product was ordered.
-|total_customers     |INT                  |The unique number of customers that purchased each product.
 |total_quantity      |INT                  |The total quantity of products purchased.
 |total_sales         |INT                  |The total revenue generated by each product.
-|lifespan_month      |INT                  |The months of history each product has with the organization.
-|product_status      |VARCHAR(14)          |The status of each product (e.g., 'High Performer', 'Mid Range', 'Low Performer').
+|total_customers     |INT                  |The unique number of customers that purchased each product.
+|recency_month       |INT                  |The number of months since each product was last ordered.
 |avg_order_revenue   |INT                  |The revenue generated per order (total_sales/total_orders).
 |avg_monthly_revenue |INT                  |The revenue generated per month (total_sales/lifespan_month).
 
