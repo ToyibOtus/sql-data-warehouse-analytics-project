@@ -33,7 +33,7 @@ This repository is an excellent resource for professionals, and students looking
 
 Create a mordern **data warehouse using SQL server** to consolidate sales data, enabling analytical reporting and informed decision-making.
 
-##### Specifications
+#### Specifications
 
 * **Data Sources**: Import data from two source systems (CRM and ERP), provided as CSV files.
 * **Data Quality**: Cleanse and resolve data quality issue prior to analysis.
