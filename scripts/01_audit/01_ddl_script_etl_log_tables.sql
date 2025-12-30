@@ -28,7 +28,7 @@ CREATE TABLE [audit].etl_job_run
 CREATE TABLE [audit].etl_step_run
 (
 	step_run_id UNIQUEIDENTIFIER NOT NULL,
-	job_run_id UNIQUEIDENTIFIER,
+	job_run_id UNIQUEIDENTIFIER NOT NULL,
 	layer NVARCHAR(50) NOT NULL,
 	table_name NVARCHAR(50) NOT NULL,
 	step_name NVARCHAR(50) NOT NULL,
@@ -42,7 +42,6 @@ CREATE TABLE [audit].etl_step_run
 	source_path NVARCHAR(MAX),
 	msg NVARCHAR(MAX),
 	CONSTRAINT pk_etl_step_run PRIMARY KEY(step_run_id),
-	CONSTRAINT fk_etl_step_run_etl_job_run FOREIGN KEY(job_run_id) REFERENCES [audit].etl_job_run(job_run_id),
 	CONSTRAINT chk_step_run_status CHECK(step_run_status IN ('RUNNING', 'NO OPERATION', 'SUCCESS', 'FAILED'))
 );
 
@@ -50,7 +49,7 @@ CREATE TABLE [audit].etl_step_run
 CREATE TABLE [audit].etl_error_log
 (
 	error_run_id UNIQUEIDENTIFIER DEFAULT NEWID() NOT NULL,
-	job_run_id UNIQUEIDENTIFIER,
+	job_run_id UNIQUEIDENTIFIER NOT NULL,
 	step_run_id UNIQUEIDENTIFIER NOT NULL,
 	err_procedure NVARCHAR(50) NOT NULL,
 	err_timestamp DATETIME DEFAULT GETDATE() NOT NULL,
@@ -60,7 +59,6 @@ CREATE TABLE [audit].etl_error_log
 	err_line INT NOT NULL,
 	err_severity INT NOT NULL,
 	CONSTRAINT pk_etl_error_log PRIMARY KEY(error_run_id),
-	CONSTRAINT fk_etl_error_log_etl_job_run FOREIGN KEY(job_run_id) REFERENCES [audit].etl_job_run(job_run_id),
 	CONSTRAINT fk_etl_error_log_etl_step_run FOREIGN KEY(step_run_id) REFERENCES [audit].etl_step_run(step_run_id)
 );
 
@@ -68,7 +66,7 @@ CREATE TABLE [audit].etl_error_log
 CREATE TABLE [audit].etl_data_quality
 (
 	dq_run_id UNIQUEIDENTIFIER DEFAULT NEWID() NOT NULL,
-	job_run_id UNIQUEIDENTIFIER,
+	job_run_id UNIQUEIDENTIFIER NOT NULL,
 	step_run_id UNIQUEIDENTIFIER NOT NULL,
 	dq_timestamp DATETIME DEFAULT GETDATE() NOT NULL,
 	dq_layer NVARCHAR(50) NOT NULL,
@@ -79,7 +77,6 @@ CREATE TABLE [audit].etl_data_quality
 	dq_status NVARCHAR(50) NOT NULL,
 	err_detail NVARCHAR(1000),
 	CONSTRAINT pk_etl_data_quality PRIMARY KEY(dq_run_id),
-	CONSTRAINT fk_etl_data_quality_etl_job_run FOREIGN KEY(job_run_id) REFERENCES [audit].etl_job_run(job_run_id),
 	CONSTRAINT fk_etl_data_quality_etl_step_run FOREIGN KEY(step_run_id) REFERENCES [audit].etl_step_run(step_run_id)
 );
 
