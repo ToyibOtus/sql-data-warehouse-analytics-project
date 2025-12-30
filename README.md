@@ -47,7 +47,7 @@ This section of the project is splitted into two phases:
 * **Exploratory Data Analytics (EDA)**
 * **Advanced Data Analytics**
 
-### Objectives
+#### Objectives
 
 Generate an SQL-based analytics that provide detailed insights into:
 
