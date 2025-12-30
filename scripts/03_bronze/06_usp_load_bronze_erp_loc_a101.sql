@@ -11,7 +11,7 @@ Parameter: @job_run_id UNIQUEIDENTIFIER = NULL
 Usage: EXEC bronze.usp_load_bronze_erp_loc_a101;
 
 Note:
-	* Running this script independently, return NULL to job_run_id (parameter) in log tables.
+	* Running this script independently assigns a job_run_id (parameter) local to the procedure.
 	* Ensure to run the master procedure as it assigns similar job_run_id across all tables & layers
 	  within the same ETL run, and thus allowing for easy traceability & debugging.
 ===============================================================================================================
@@ -35,6 +35,9 @@ BEGIN
 	@rows_loaded INT,
 	@rows_diff INT,
 	@source_path NVARCHAR(50) = 'landing.erp_loc_a101';
+
+	-- Map value to job_run_id if NULL
+	IF @job_run_id IS NULL SET @job_run_id = NEWID();
 
 	-- Capture start time
 	SET @start_time = GETDATE();
@@ -72,7 +75,7 @@ BEGIN
 		BEGIN
 			SET @end_time = GETDATE();
 			SET @step_duration = DATEDIFF(second, @start_time, @end_time);
-			SET @step_status = 'FAILED';
+			SET @step_status = 'No Operation';
 			SET @rows_source = 0;
 			SET @rows_loaded = 0;
 			SET @rows_diff = 0;
@@ -84,7 +87,8 @@ BEGIN
 				step_run_status = @step_status,
 				rows_source = @rows_source,
 				rows_loaded = @rows_loaded,
-				rows_diff = @rows_diff
+				rows_diff = @rows_diff,
+				msg = 'No new records from "' + @source_path + '". Unable to load.'
 			WHERE step_run_id = @step_run_id;
 
 			RETURN;
@@ -101,14 +105,14 @@ BEGIN
 		(
 			cid,
 			cntry,
-			dwh_step_run_id,
+			dwh_job_run_id,
 			dwh_raw_row,
 			dwh_row_hash
 		)
 		SELECT
 			cid,
 			cntry,
-			dwh_step_run_id,
+			dwh_job_run_id,
 			dwh_raw_row,
 			HASHBYTES('SHA2_256', CAST(dwh_raw_row AS VARBINARY(MAX))) AS dwh_row_hash
 		FROM
@@ -116,7 +120,7 @@ BEGIN
 			SELECT 
 				cid,
 				cntry,
-				@step_run_id AS dwh_step_run_id,
+				@job_run_id AS dwh_job_run_id,
 				CONCAT_WS('|',
 				COALESCE(TRIM(UPPER(CAST(cid AS NVARCHAR(50)))), '~'),
 				COALESCE(TRIM(UPPER(CAST(cntry AS NVARCHAR(50)))), '~')) AS dwh_raw_row
