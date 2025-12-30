@@ -7,7 +7,7 @@ Script Purpose:
 	business progressiveness.
 ==========================================================================
 */
--- Year-Over-Year Analysis
+-- Year-Over-Year Analysis (Yearly progressiveness of the business)
 SELECT
 	order_date_year,
 	SUM(weighted_price) OVER(ORDER BY order_date_year)
@@ -28,7 +28,7 @@ WHERE order_date IS NOT NULL
 GROUP BY YEAR(order_date)
 )SUB;
 
--- Month-Over-Month Analysis
+-- Month-Over-Month Analysis (Monthly progressiveness of the business) 
 SELECT
 	order_date_month,
 	SUM(weighted_price) OVER(PARTITION BY YEAR(order_date_month) ORDER BY order_date_month)
