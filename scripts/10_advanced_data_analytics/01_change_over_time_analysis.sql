@@ -7,7 +7,7 @@ Script Purpose:
 	showing insight into how relevant business metrics change over time.
 ==========================================================================
 */
--- Year-Over-Year Analysis
+-- Year-Over-Year Analysis (How much do relevant business metrics change over the years)
 SELECT
 	YEAR(order_date) AS order_date_year,
 	SUM(price * quantity)/SUM(quantity) AS weighted_avg_price,
@@ -20,7 +20,7 @@ FROM gold.vw_fact_sales
 WHERE YEAR(order_date) IS NOT NULL
 GROUP BY order_date;
 
--- Month-Over-Month Analysis
+-- Month-Over-Month Analysis (How much do relevant business metrics change over the months)
 SELECT
 	DATETRUNC(month, order_date) AS order_date_month,
 	SUM(price * quantity)/SUM(quantity) AS weighted_avg_price,
