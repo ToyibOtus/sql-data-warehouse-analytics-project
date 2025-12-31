@@ -11,7 +11,7 @@ Parameter: @job_run_id UNIQUEIDENTIFIER = NULL
 Usage: EXEC gold.usp_load_gold_dim_customers;
 
 Note:
-	* Running this script independently, return NULL to job_run_id (parameter) in log tables.
+	* Running this script independently assigns a job_run_id local to this procedure.
 	* Ensure to run the master procedure as it assigns similar job_run_id across all tables & layers
 	  within the same ETL run, and thus allowing for easy traceability & debugging.
 ===========================================================================================================
@@ -35,6 +35,9 @@ BEGIN
 	@rows_loaded INT,
 	@rows_diff INT,
 	@source_path NVARCHAR(1000) = 'silver.crm_cust_info + silver.erp_cust_az12 + silver.erp_loc_a101';
+
+	-- Map value to job_run_id if NULL
+	IF @job_run_id IS NULL SET @job_run_id = NEWID();
 
 	-- Capture start time
 	SET @start_time = GETDATE();
@@ -102,7 +105,7 @@ BEGIN
 			marital_status,
 			birth_date,
 			create_date,
-			@step_run_id AS dwh_step_run_id,
+			@job_run_id AS dwh_job_run_id,
 			CONCAT_WS('|', 
 			customer_id,
 			customer_number,
@@ -136,7 +139,7 @@ BEGIN
 			mc.marital_status,
 			mc.birth_date,
 			mc.create_date,
-			mc.dwh_step_run_id,
+			mc.dwh_job_run_id,
 			mc.dwh_raw_row,
 			mc.dwh_row_hash
 			INTO #dim_customers
@@ -193,7 +196,7 @@ BEGIN
 				tgt.marital_status = src.marital_status,
 				tgt.birth_date = src.birth_date,
 				tgt.create_date = src.create_date,
-				tgt.dwh_step_run_id = src.dwh_step_run_id,
+				tgt.dwh_job_run_id = src.dwh_job_run_id,
 				tgt.dwh_raw_row = src.dwh_raw_row,
 				tgt.dwh_row_hash = src.dwh_row_hash
 
@@ -210,7 +213,7 @@ BEGIN
 				marital_status,
 				birth_date,
 				create_date,
-				dwh_step_run_id,
+				dwh_job_run_id,
 				dwh_raw_row,
 				dwh_row_hash
 			)
@@ -225,7 +228,7 @@ BEGIN
 				src.marital_status,
 				src.birth_date,
 				src.create_date,
-				src.dwh_step_run_id,
+				src.dwh_job_run_id,
 				src.dwh_raw_row,
 				src.dwh_row_hash
 			);
