@@ -11,7 +11,7 @@ Parameter: @job_run_id UNIQUEIDENTIFIER = NULL
 Usage: EXEC landing.usp_load_landing_crm_sales_details;
 
 Note:
-	* Running this script independently assigns a job_run_id local to the procedure.
+	* Running this script independently assigns a job_run_id local to this procedure.
 	* Ensure to run the master stored procedure as it performs a full ETL run and assigns same 
 	  job_run_id across all layers and tables within the same run.
 =====================================================================================================
