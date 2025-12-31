@@ -11,7 +11,7 @@ Parameter: @job_run_id UNIQUEIDENTIFIER = NULL
 Usage: EXEC silver.usp_load_silver_erp_px_cat_g1v2;
 
 Note:
-	* Running this script independently will assign NULL to the parameter @job_run_id is none is provided.
+	* Running this script independently assigns a job_run_id local to this procedure.
 	* Ensure to run the master procedure as it performs a full ETL run and assigns similar job_run_id 
 	  across tables and layers within the same ETL run, allowing for unified tracking.
 ==================================================================================================================
@@ -37,6 +37,9 @@ BEGIN
 	@source_path NVARCHAR(50) = 'bronze.erp_px_cat_g1v2',
 	@pk_nulls INT,
 	@pk_duplicates INT;
+
+	-- Map value to job_run_id if NULL
+	IF @job_run_id IS NULL SET @job_run_id = NEWID();
 
 	-- Capture start_time
 	SET @start_time = GETDATE();
@@ -86,7 +89,7 @@ BEGIN
 			cat,
 			subcat,
 			maintenance,
-			@step_run_id AS dwh_step_run_id,
+			@job_run_id AS dwh_job_run_id,
 			CONCAT_WS('|',
 			id,
 			cat,
@@ -106,7 +109,7 @@ BEGIN
 			cat,
 			subcat,
 			maintenance,
-			dwh_step_run_id,
+			dwh_job_run_id,
 			dwh_raw_row,
 			dwh_row_hash
 		)
@@ -115,7 +118,7 @@ BEGIN
 			mc.cat,
 			mc.subcat,
 			mc.maintenance,
-			mc.dwh_step_run_id,
+			mc.dwh_job_run_id,
 			mc.dwh_raw_row,
 			mc.dwh_row_hash
 		FROM metadata_columns mc
@@ -244,7 +247,7 @@ BEGIN
 			tgt.cat = src.cat,
 			tgt.subcat = src.subcat,
 			tgt.maintenance = src.maintenance,
-			tgt.dwh_step_run_id = src.dwh_step_run_id,
+			tgt.dwh_job_run_id = src.dwh_job_run_id,
 			tgt.dwh_raw_row = src.dwh_raw_row,
 			tgt.dwh_row_hash = src.dwh_row_hash
 
@@ -256,7 +259,7 @@ BEGIN
 				cat,
 				subcat,
 				maintenance,
-				dwh_step_run_id,
+				dwh_job_run_id,
 				dwh_raw_row,
 				dwh_row_hash
 			)
@@ -266,7 +269,7 @@ BEGIN
 				src.cat,
 				src.subcat,
 				src.maintenance,
-				src.dwh_step_run_id,
+				src.dwh_job_run_id,
 				src.dwh_raw_row,
 				src.dwh_row_hash
 			);
