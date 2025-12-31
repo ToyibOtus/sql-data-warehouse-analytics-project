@@ -11,7 +11,7 @@ Parameter: @job_run_id UNIQUEIDENTIFIER = NULL
 Usage: EXEC gold.usp_load_gold_fact_sales;
 
 Note:
-	* Running this script independently, return NULL to job_run_id (parameter) in log tables.
+	* Running this script independently assigns a job_run_id local to this procedure.
 	* Ensure to run the master procedure as it assigns similar job_run_id across all tables & layers
 	  within the same ETL run, and thus allowing for easy traceability & debugging.
 ===========================================================================================================
@@ -35,6 +35,9 @@ BEGIN
 	@rows_loaded INT,
 	@rows_diff INT,
 	@source_path NVARCHAR(1000) = 'silver.crm_sales_details + gold.dim_products + gold.dim_customers';
+
+	-- Map value to job_run_id if NULL
+	IF @job_run_id IS NULL SET @job_run_id = NEWID();
 
 	-- Capture start time
 	SET @start_time = GETDATE();
@@ -99,7 +102,7 @@ BEGIN
 			sales,
 			quantity,
 			price,
-			@step_run_id AS dwh_step_run_id,
+			@job_run_id AS dwh_job_run_id,
 			CONCAT_WS('|',
 			order_number,
 			product_key,
@@ -133,7 +136,7 @@ BEGIN
 			mc.sales,
 			mc.quantity,
 			mc.price,
-			mc.dwh_step_run_id,
+			mc.dwh_job_run_id,
 			mc.dwh_raw_row,
 			mc.dwh_row_hash
 			INTO #fact_sales
@@ -193,7 +196,7 @@ BEGIN
 				sales,
 				quantity,
 				price,
-				dwh_step_run_id,
+				dwh_job_run_id,
 				dwh_raw_row,
 				dwh_row_hash
 			)
@@ -208,7 +211,7 @@ BEGIN
 				src.sales,
 				src.quantity,
 				src.price,
-				src.dwh_step_run_id,
+				src.dwh_job_run_id,
 				src.dwh_raw_row,
 				src.dwh_row_hash
 			);
