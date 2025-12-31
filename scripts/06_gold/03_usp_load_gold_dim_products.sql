@@ -11,7 +11,7 @@ Parameter: @job_run_id UNIQUEIDENTIFIER = NULL
 Usage: EXEC gold.usp_load_gold_dim_products;
 
 Note:
-	* Running this script independently, return NULL to job_run_id (parameter) in log tables.
+	* Running this script independently assigns a job_run_id local to this procedure.
 	* Ensure to run the master procedure as it assigns similar job_run_id across all tables & layers
 	  within the same ETL run, and thus allowing for easy traceability & debugging.
 ===========================================================================================================
@@ -35,6 +35,9 @@ BEGIN
 	@rows_loaded INT,
 	@rows_diff INT,
 	@source_path NVARCHAR(1000) = 'silver.crm_prd_info + silver.erp_px_cat_g1v2';
+
+	-- Map value to job_run_id if NULL
+	IF @job_run_id IS NULL SET @job_run_id = NEWID();
 
 	-- Capture start time
 	SET @start_time = GETDATE();
@@ -100,7 +103,7 @@ BEGIN
 			maintenance,
 			product_cost,
 			product_start_date,
-			@step_run_id AS dwh_step_run_id,
+			@job_run_id AS dwh_job_run_id,
 			CONCAT_WS('|', 
 			product_id,
 			product_number,
@@ -137,7 +140,7 @@ BEGIN
 			mc.maintenance,
 			mc.product_cost,
 			mc.product_start_date,
-			mc.dwh_step_run_id,
+			mc.dwh_job_run_id,
 			mc.dwh_raw_row,
 			mc.dwh_row_hash
 			INTO #dim_products
@@ -195,7 +198,7 @@ BEGIN
 			tgt.maintenance = src.maintenance,
 			tgt.product_cost = src.product_cost,
 			tgt.product_start_date = src.product_start_date,
-			tgt.dwh_step_run_id = src.dwh_step_run_id,
+			tgt.dwh_job_run_id = src.dwh_job_run_id,
 			tgt.dwh_raw_row = src.dwh_raw_row,
 			tgt.dwh_row_hash = src.dwh_row_hash
 
@@ -213,7 +216,7 @@ BEGIN
 				maintenance,
 				product_cost,
 				product_start_date,
-				dwh_step_run_id,
+				dwh_job_run_id,
 				dwh_raw_row,
 				dwh_row_hash
 			)
@@ -229,7 +232,7 @@ BEGIN
 				src.maintenance,
 				src.product_cost,
 				src.product_start_date,
-				src.dwh_step_run_id,
+				src.dwh_job_run_id,
 				src.dwh_raw_row,
 				src.dwh_row_hash	
 			);
