@@ -82,7 +82,7 @@ The data architecture follows the Medallion Architecture **Bronze**, **Silver**,
 ---
 
 ## License
-This project is lincesed under **MIT Lincense**. You are free to use, modify, or share with proper attribution.
+This project is licensed under **MIT License**. You are free to use, modify, or share with proper attribution.
 
 ---
 
