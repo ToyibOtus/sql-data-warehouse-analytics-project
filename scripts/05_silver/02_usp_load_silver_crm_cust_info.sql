@@ -11,7 +11,7 @@ Parameter: @job_run_id UNIQUEIDENTIFIER = NULL
 Usage: EXEC silver.usp_load_silver_crm_cust_info;
 
 Note:
-	* Running this script independently will assign NULL to the parameter @job_run_id is none is provided.
+	* Running this script independently assigns a job_run_id local to this procedure.
 	* Ensure to run the master procedure as it performs a full ETL run and assigns similar job_run_id 
 	  across tables and layers within the same ETL run, allowing for unified tracking.
 ==================================================================================================================
@@ -37,6 +37,9 @@ BEGIN
 	@source_path NVARCHAR(50) = 'bronze.crm_cust_info',
 	@pk_nulls INT,
 	@pk_duplicates INT;
+
+	-- Map value to job_run_id if NULL
+	IF @job_run_id IS NULL SET @job_run_id = NEWID();
 
 	-- Capture start_time
 	SET @start_time = GETDATE();
@@ -113,7 +116,7 @@ BEGIN
 				cst_marital_status,
 				cst_gndr,
 				cst_create_date,
-				@step_run_id AS dwh_step_run_id,
+				@job_run_id AS dwh_job_run_id,
 				CONCAT_WS('|',
 				cst_id,
 				cst_key,
@@ -142,7 +145,7 @@ BEGIN
 			cst_marital_status,
 			cst_gndr,
 			cst_create_date,
-			dwh_step_run_id,
+			dwh_job_run_id,
 			dwh_raw_row,
 			dwh_row_hash
 		)
@@ -154,7 +157,7 @@ BEGIN
 			mc.cst_marital_status,
 			mc.cst_gndr,
 			mc.cst_create_date,
-			mc.dwh_step_run_id,
+			mc.dwh_job_run_id,
 			mc.dwh_raw_row,
 			mc.dwh_row_hash
 		FROM metadata_columns mc
@@ -275,7 +278,7 @@ BEGIN
 			tgt.cst_marital_status = src.cst_marital_status,
 			tgt.cst_gndr = src.cst_gndr,
 			tgt.cst_create_date = src.cst_create_date,
-			tgt.dwh_step_run_id = src.dwh_step_run_id,
+			tgt.dwh_job_run_id = src.dwh_job_run_id,
 			tgt.dwh_raw_row = src.dwh_raw_row,
 			tgt.dwh_row_hash = src.dwh_row_hash
 
@@ -291,7 +294,7 @@ BEGIN
 					cst_marital_status,
 					cst_gndr,
 					cst_create_date,
-					dwh_step_run_id,
+					dwh_job_run_id,
 					dwh_raw_row,
 					dwh_row_hash
 				)
@@ -304,7 +307,7 @@ BEGIN
 					src.cst_marital_status,
 					src.cst_gndr,
 					src.cst_create_date,
-					src.dwh_step_run_id,
+					src.dwh_job_run_id,
 					src.dwh_raw_row,
 					src.dwh_row_hash
 				);
