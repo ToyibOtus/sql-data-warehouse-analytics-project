@@ -11,9 +11,9 @@ Parameter: @job_run_id UNIQUEIDENTIFIER = NULL
 Usage: EXEC landing.usp_load_landing_crm_sales_details;
 
 Note:
-	The default value of job_run_id is NULL if it is run independently.
-	Ensure to run the master stored procedure as it performs a full ETL run and assigns same 
-	job_run_id across all layers and tables within the same run.
+	* Running this script independently assigns a job_run_id local to the procedure.
+	* Ensure to run the master stored procedure as it performs a full ETL run and assigns same 
+	  job_run_id across all layers and tables within the same run.
 =====================================================================================================
 */
 CREATE OR ALTER PROCEDURE landing.usp_load_landing_crm_sales_details @job_run_id UNIQUEIDENTIFIER = NULL AS
@@ -34,6 +34,9 @@ BEGIN
 	@rows_loaded INT,
 	@source_path NVARCHAR(MAX) = 'C:\Users\PC\Documents\SQL_DataWareHouseProject\sql-data-warehouse-project\datasets\source_crm\sales_details.csv',
 	@sql NVARCHAR(MAX);
+
+	-- Map value to job_run_id if NULL
+	IF @job_run_id IS NULL SET @job_run_id = NEWID();
 
 	-- Capture start time
 	SET @start_time = GETDATE();
